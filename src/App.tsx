@@ -5,6 +5,7 @@ import { db } from "./firebase";
 import ChatSection from "./components/ChatSection";
 import MathFunctionSection from "./components/MathFunctionSection";
 import AdminSection from "./components/AdminSection";
+import DhikrTicker from "./components/DhikrTicker";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"chat" | "math" | "admin">("chat");
@@ -117,6 +118,9 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* Moving Ticker with spiritual Azkar */}
+        <DhikrTicker />
 
         {/* Tab switch layout buttons */}
         <nav className="flex items-center justify-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm max-w-lg mx-auto">

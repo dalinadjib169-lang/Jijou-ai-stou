@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play } from "lucide-react";
+import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play, Keyboard, HelpCircle as QuestionIcon, CornerDownLeft, MessageSquare, Plus, RotateCcw } from "lucide-react";
 
 export default function MathFunctionSection() {
   const [expression, setExpression] = useState("(x^2 - 1) / (x - 2)");
@@ -13,28 +13,22 @@ export default function MathFunctionSection() {
   // Intermediate Value Theorem (M.V.T) interval state
   const [intervalA, setIntervalA] = useState(0);
   const [intervalB, setIntervalB] = useState(3.5);
+
+  const [studentQuestion, setStudentQuestion] = useState("");
+  const [systemAnswer, setSystemAnswer] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvasWidth, setCanvasWidth] = useState(500);
-  const [canvasHeight, setCanvasHeight] = useState(400);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Parse and evaluate a function string for a given x
   const evaluateFunc = (expr: string, x: number): number => {
     try {
-      // General pre-parsing
       let formatted = expr.toLowerCase();
-      
-      // Standard mathematical transformations
       formatted = formatted
         .replace(/\s+/g, "")
-        // Handle parenthesis numbers like 2(x)
         .replace(/(\d)\(/g, "$1*(") 
-        // Handle 2x, 5x, etc.
         .replace(/(\d)(x)/g, "$1*$2")
-        // Powers replacing e.g., x^2 or (x-1)^2 with standard Javascript pow
-        // Let's do general ^ replace with standard JavaScript exponentiation **
         .replace(/\^/g, "**")
-        // Support common math functions
         .replace(/sin/g, "Math.sin")
         .replace(/cos/g, "Math.cos")
         .replace(/tan/g, "Math.tan")
@@ -45,7 +39,6 @@ export default function MathFunctionSection() {
         .replace(/e\*\*/g, "Math.exp") // handles e^x
         .replace(/([^a-z]|^)e([^a-z]|$)/g, "$1Math.E$2");
 
-      // Set up safe context evaluation
       const evaluator = new Function("x", `
         try {
           return ${formatted};
@@ -62,17 +55,14 @@ export default function MathFunctionSection() {
   };
 
   // Determine forbidden values (values of x causing denom = 0 or limits towards infinity)
-  // We scan for typical denominators, like (x-a) or x^2-b. We can approximate numerically also.
   const findForbiddenValues = (): number[] => {
     const forbidden: number[] = [];
-    // Numerical scan with fine precision to detect division by zero (extreme values)
     const scanMin = -10;
     const scanMax = 10;
     const step = 0.05;
     
     for (let x = scanMin; x <= scanMax; x += step) {
       const val = evaluateFunc(expression, x);
-      // If the function produces infinity or extreme localized jump
       if (isNaN(val) || !isFinite(val)) {
         const rounded = Math.round(x * 10) / 10;
         if (!forbidden.includes(rounded)) {
@@ -81,8 +71,7 @@ export default function MathFunctionSection() {
       }
     }
     
-    // Also parse denoms string heuristics directly to be extremely precise
-    // E.g., / (x - 2) -> 2
+    // Heuristics
     const match = expression.match(/\/[-+\s(]*x\s*-\s*(\d+(\.\d+)?)/i);
     if (match) {
       const val = parseFloat(match[1]);
@@ -99,7 +88,7 @@ export default function MathFunctionSection() {
 
   const forbiddenValues = findForbiddenValues();
 
-  // Numerical derivative at point x_0 using symmetric quotient difference formula 
+  // Numerical derivative at point x_0
   const computeDerivative = (x: number): number => {
     const h = 0.0001;
     const yplus = evaluateFunc(expression, x + h);
@@ -108,41 +97,37 @@ export default function MathFunctionSection() {
     return (yplus - yminus) / (2 * h);
   };
 
-  // Draw coordinate system and mathematical curves on Canvas
+  // Draw coordinate system and curves on Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear Canvas
-    ctx.clearRect(0,0, canvas.width, canvas.height);
+    // Fill with modern clean white background for high density light display
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     const width = canvas.width;
     const height = canvas.height;
     
-    // Scale properties (how many pixels make 1 mathematical unit)
     const scaleX = width / 20; // range from -10 to 10
     const scaleY = height / 20; // range from -10 to 10
     
     const originX = width / 2;
     const originY = height / 2;
 
-    // Convert Math coordinates to Canvas pixel coordinates
     const toPixelX = (x: number) => originX + x * scaleX;
     const toPixelY = (y: number) => originY - y * scaleY;
-
-    // Convert Canvas pixels to Math coordinates
     const toMathX = (px: number) => (px - originX) / scaleX;
-    const toMathY = (py: number) => (originY - py) / scaleY;
 
-    // 1. Draw Grid Lines
-    ctx.strokeStyle = "#162238";
+    // 1. Draw Grid Lines (light slate index)
+    ctx.strokeStyle = "#e2e8f0";
     ctx.lineWidth = 1;
     ctx.font = "9px JetBrains Mono, monospace";
-    ctx.fillStyle = "#4b5563";
+    ctx.fillStyle = "#64748b";
 
-    // Vertical grid and text
+    // Vertical grid
     for (let x = -10; x <= 10; x += 1) {
       if (x === 0) continue;
       const px = toPixelX(x);
@@ -153,7 +138,7 @@ export default function MathFunctionSection() {
       ctx.fillText(x.toString(), px - 5, originY + 12);
     }
 
-    // Horizontal grid and text
+    // Horizontal grid
     for (let y = -10; y <= 10; y += 1) {
       if (y === 0) continue;
       const py = toPixelY(y);
@@ -164,8 +149,8 @@ export default function MathFunctionSection() {
       ctx.fillText(y.toString(), originX + 7, py + 3);
     }
 
-    // 2. Draw Main Axes (x-axis and y-axis)
-    ctx.strokeStyle = "#475569";
+    // 2. Draw Key Coordinate Axes
+    ctx.strokeStyle = "#94a3b8"; // clean cool slate blue
     ctx.lineWidth = 2;
     
     // X Axis
@@ -180,25 +165,24 @@ export default function MathFunctionSection() {
     ctx.lineTo(originX, height);
     ctx.stroke();
 
-    // Origin label
     ctx.fillText("0", originX - 10, originY + 12);
 
-    // 3. Draw Parameter Line: y = m (المناقشة الوسيطية)
+    // 3. Draw Parameter discussion: y = m
     const pyM_Line = toPixelY(mValue);
-    ctx.strokeStyle = "#ec4899"; // pink color for the slider horizontal intersection parameters
+    ctx.strokeStyle = "#ec4899"; // pink 500
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
+    ctx.setLineDash([5, 4]);
     ctx.beginPath();
     ctx.moveTo(0, pyM_Line);
     ctx.lineTo(width, pyM_Line);
     ctx.stroke();
-    ctx.setLineDash([]); // clear dash state
+    ctx.setLineDash([]);
     ctx.fillStyle = "#ec4899";
     ctx.fillText(`y = ${mValue.toFixed(1)} (الوسيط m)`, 12, pyM_Line - 6);
 
-    // 4. Plot Oblique Asymptote: y = obliqueAsymptoteExpr (if valid and checked)
+    // 4. Plot Oblique Asymptote: y = obliqueAsymptoteExpr
     if (showOblique && obliqueAsymptoteExpr) {
-      ctx.strokeStyle = "#10b981"; // elegant green
+      ctx.strokeStyle = "#10b981"; // emerald green
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -223,11 +207,11 @@ export default function MathFunctionSection() {
       ctx.setLineDash([]);
     }
 
-    // 5. Plot Forbidden Values as direct vertical red dashed lines (المقاربات العمودية)
+    // 5. Plot Forbidden Values (Vertical Asymptote)
     forbiddenValues.forEach(val => {
       const pval = toPixelX(val);
       if (pval >= 0 && pval <= width) {
-        ctx.strokeStyle = "#ef4444"; // bright red for forbidden asymptotes
+        ctx.strokeStyle = "#f43f5e"; // rose 500
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -235,27 +219,24 @@ export default function MathFunctionSection() {
         ctx.lineTo(pval, height);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = "#ef4444";
-        ctx.fillText(`قيمة ممنوعة x = ${val}`, pval + 5, 20);
+        ctx.fillStyle = "#f43f5e";
+        ctx.fillText(`مُقارب عمودي x = ${val}`, pval + 5, 20);
       }
     });
 
-    // 6. Draw Curve f(x) (المنحنى البياني للدالة)
-    ctx.strokeStyle = "#3b82f6"; // beautiful mathematical deep neon blue
+    // 6. Draw Curve f(x)
+    ctx.strokeStyle = "#0284c7"; // deep mathematical blue
     ctx.lineWidth = 2.5;
     ctx.beginPath();
 
     let startedNewSegment = true;
     for (let px = 0; px <= width; px++) {
       const mx = toMathX(px);
-      
-      // Check proximity to forbidden value to prevent drawing continuous lines straight to infinity
       const closeToForbidden = forbiddenValues.some(fV => Math.abs(mx - fV) < 0.15);
-      
       const my = evaluateFunc(expression, mx);
+
       if (!isNaN(my) && isFinite(my) && !closeToForbidden) {
         const py = toPixelY(my);
-        // Ensure values stay moderately in boundary during painting
         if (py >= -100 && py <= height + 100) {
           if (startedNewSegment) {
             ctx.moveTo(px, py);
@@ -272,25 +253,23 @@ export default function MathFunctionSection() {
     }
     ctx.stroke();
 
-    // 7. Graph tangent line at tangentPoint: y = f'(x0)(x - x0) + f(x0)
+    // 7. Graph tangent line key
     if (showTangent) {
       const x0 = tangentPoint;
       const y0 = evaluateFunc(expression, x0);
       const derivativeVal = computeDerivative(x0);
       
       if (!isNaN(y0) && !isNaN(derivativeVal)) {
-        // Draw point on curve
         const px0 = toPixelX(x0);
         const py0 = toPixelY(y0);
         
-        ctx.fillStyle = "#f59e0b"; // gold tangent point indicator
+        ctx.fillStyle = "#d97706"; // amber 600
         ctx.beginPath();
         ctx.arc(px0, py0, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillText(`A(${x0}, ${y0.toFixed(1)})`, px0 + 7, py0 - 7);
 
-        // Draw Tangent line line equation matching: y = slope * (x - x0) + y0
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = "#f59e0b"; // amber 500
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         
@@ -305,45 +284,68 @@ export default function MathFunctionSection() {
       }
     }
 
-  }, [expression, mValue, obliqueAsymptoteExpr, showOblique, forbiddenValues, tangentPoint, showTangent, canvasWidth, canvasHeight]);
+  }, [expression, mValue, obliqueAsymptoteExpr, showOblique, forbiddenValues, tangentPoint, showTangent]);
 
-  // Compute tangent equation text representation
+  const insertSymbol = (sym: string) => {
+    let toInsert = sym;
+    if (sym === "exp") toInsert = "exp(x)";
+    else if (sym === "ln") toInsert = "ln(x)";
+    else if (sym === "sqrt") toInsert = "sqrt(x)";
+    else if (sym === "sin") toInsert = "sin(x)";
+    else if (sym === "cos") toInsert = "cos(x)";
+    
+    if (!inputRef.current) {
+      setExpression(prev => prev + toInsert);
+      return;
+    }
+
+    const start = inputRef.current.selectionStart ?? expression.length;
+    const end = inputRef.current.selectionEnd ?? expression.length;
+    const newExpr = expression.substring(0, start) + toInsert + expression.substring(end);
+    setExpression(newExpr);
+
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const nextPos = start + toInsert.length;
+        inputRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 50);
+  };
+
+  const clearExpression = () => {
+    setExpression("");
+    if (inputRef.current) inputRef.current.focus();
+  };
+
   const getTangentEquation = () => {
     const x0 = tangentPoint;
     const y0 = evaluateFunc(expression, x0);
     const m = computeDerivative(x0);
-    if (isNaN(y0) || isNaN(m)) return "معادلة المماس غير معرّفة عند هذه النقطة.";
+    if (isNaN(y0) || isNaN(m)) return "غير معرّفة عند هذه النقطة.";
     
-    // y = m*(x - x0) + y0 => y = m*x - m*x0 + y0
     const b = -m * x0 + y0;
     const mStr = m.toFixed(2);
     const bStr = b >= 0 ? `+ ${b.toFixed(2)}` : `- ${Math.abs(b).toFixed(2)}`;
     return `T : y = ${mStr}x ${bStr}`;
   };
 
-  // Evaluate critical points inside scanning range
   const getCriticalPoints = () => {
-    const pts: { x: number; y: number; type: string }[] = [];
-    const step = 0.1;
-    // scan the interval -6 to 6
+    const pts: { x: number; y: number; type: "min" | "max" | "inflection" }[] = [];
+    const step = 0.15;
     for (let x = -6.0; x <= 6.0; x += step) {
       const d1 = computeDerivative(x);
       const d2 = computeDerivative(x + step);
       if (!isNaN(d1) && !isNaN(d2)) {
-        // Sign transition indicates local optimum
         if (d1 * d2 < 0) {
-          const exactX = Math.round((x + step/2) * 10) / 10;
+          const exactX = Math.round((x + step / 2) * 100) / 100;
           const yVal = evaluateFunc(expression, exactX);
           if (!isNaN(yVal)) {
-            // Determine structure if min or max
-            const leftDerivative = computeDerivative(exactX - 0.2);
-            const rightDerivative = computeDerivative(exactX + 0.2);
-            let type = "قيمة حدية";
-            if (leftDerivative < 0 && rightDerivative > 0) type = "نهاية صغرى (Minimum)";
-            if (leftDerivative > 0 && rightDerivative < 0) type = "نهاية كبرى (Maximum)";
-            
-            if (!pts.some(p => Math.abs(p.x - exactX) < 0.4)) {
-              pts.push({ x: exactX, y: Math.round(yVal * 10) / 10, type });
+            const leftDer = computeDerivative(exactX - 0.2);
+            const rightDer = computeDerivative(exactX + 0.2);
+            let type: "min" | "max" = leftDer < 0 && rightDer > 0 ? "min" : "max";
+            if (!pts.some(p => Math.abs(p.x - exactX) < 0.5)) {
+              pts.push({ x: exactX, y: Math.round(yVal * 100) / 100, type });
             }
           }
         }
@@ -354,7 +356,6 @@ export default function MathFunctionSection() {
 
   const criticalPointsList = getCriticalPoints();
 
-  // Intermediate Value Theorem report verification
   const checkMVT_Result = () => {
     const yA = evaluateFunc(expression, intervalA);
     const yB = evaluateFunc(expression, intervalB);
@@ -363,29 +364,25 @@ export default function MathFunctionSection() {
       return "يرجى اختيار مجال مغلق مستمر لا يحتوي على قيم ممنوعة.";
     }
 
-    // Check if there's a forbidden value within interval
     const containsForbidden = forbiddenValues.some(val => val > intervalA && val < intervalB);
     if (containsForbidden) {
-      return `❌ المبرهنة لا تطبق مباشرة لأن المجال يحتوي على قيمة ممنوعة (${forbiddenValues.join(", ")}). الدالة غير مستمرة!`;
+      return `❌ مبرهنة القيم المتوسطة لا تطبق لأن المجال يحتوي على قيمة ممنوعة (${forbiddenValues.join(", ")}). الدالة غير مستمرة!`;
     }
 
     const prod = yA * yB;
     if (prod < 0) {
       return `✓ مستمرة ورتيبة: بما أن f(${intervalA}) = ${yA.toFixed(2)} و f(${intervalB}) = ${yB.toFixed(2)} وإشارتاهما متعاكستان (f(a) × f(b) < 0)، فإنه حسب مبرهنة القيم المتوسطة، المعادلة f(x) = 0 تقبل حلاً وحيداً على الأقل في المجال [${intervalA} , ${intervalB}].`;
     } else {
-      return `⚠️ الدالتين f(a)=${yA.toFixed(2)} و f(b)=${yB.toFixed(2)} لهما نفس الإشارة. قد يوجد حل ولكن المبرهنة لا تضمن وجود حل صفري (f(x)=0) بشكل قاطع على هذا المجال.`;
+      return `⚠️ الدالتين f(a)=${yA.toFixed(2)} و f(b)=${yB.toFixed(2)} لهما نفس الإشارة. المبرهنة لا تضمن وجود حل قطعي في هذا المجال.`;
     }
   };
 
-  // parameter intersections evaluation (y = m lines counts)
   const countParameterSolutions = () => {
     let intersections = 0;
     const step = 0.02;
-    let signChanged = false;
     let prevDiff = NaN;
 
     for (let x = -10; x <= 10; x += step) {
-      // ignore if near forbidden
       if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.1)) continue;
       
       const val = evaluateFunc(expression, x);
@@ -402,42 +399,217 @@ export default function MathFunctionSection() {
     return intersections;
   };
 
+  // Automated Mathematical Assistant Solver
+  const solveStudentQuestion = (type: string) => {
+    let ans = "";
+    if (type === "limits") {
+      const l1 = evaluateFunc(expression, -100);
+      const l2 = evaluateFunc(expression, 100);
+      ans = `📝 **دراسة نهايات الدالة f(x) عند أطراف مجال التعريف:**\n\n`;
+      ans += `1. **عند ناقص ما لا نهاية (-∞):** بالنهاية التجريبية عند x = -100، القيمة هي تقريباً: **${isNaN(l1) ? "غير معرفة" : l1.toFixed(2)}**.\n`;
+      ans += `2. **عند زائد ما لا نهاية (+∞):** بالنهاية التجريبية عند x = 100، القيمة هي تقريباً: **${isNaN(l2) ? "غير معرفة" : l2.toFixed(2)}**.\n\n`;
+      if (forbiddenValues.length > 0) {
+        ans += `⚠️ **النهايات عند القيم الممنوعة :**\n`;
+        forbiddenValues.forEach(fV => {
+          const leftLim = evaluateFunc(expression, fV - 0.01);
+          const rightLim = evaluateFunc(expression, fV + 0.01);
+          ans += `- **عند ${fV} بقيم صغرى (<):** تقرب من **${leftLim > 100 ? "+∞" : leftLim < -100 ? "-∞" : leftLim.toFixed(1)}**\n`;
+          ans += `- **عند ${fV} بقيم كبرى (>):** تقرب من **${rightLim > 100 ? "+∞" : rightLim < -100 ? "-∞" : rightLim.toFixed(1)}**\n`;
+          ans += `هذا يؤكد أن المستقيم ذو المعادلة **x = ${fV}** هو مستقيم مقارب عمودي للمنحنى Cf! 📐\n`;
+        });
+      }
+    } else if (type === "critical") {
+      ans = `📝 **دراسة القيم الحدية (المشتق ينعدم ويغير إشارته):**\n\n`;
+      if (criticalPointsList.length === 0) {
+        ans += `لا توجد قيم حدية (عظمى أو صغرى) مرصودة محلياً في النطاق العام للدالة. قد تكون الدالة رتيبة تماماً. 📈`;
+      } else {
+        criticalPointsList.forEach((pt, i) => {
+          ans += `${i+1}. **نقطة عند x = ${pt.x}:** قمنا بحساب قيمة الدالة ووجدنا f(${pt.x}) = **${pt.y}**.\n`;
+          ans += `   - **النوع:** ${pt.type === "max" ? "قيمة حدية عظمى محلية (Maximum) 🔼" : "قيمة حدية صغرى محلية (Minimum) 🔽"}.\n`;
+        });
+      }
+    } else if (type === "parity") {
+      const f1 = evaluateFunc(expression, 2);
+      const fMinus1 = evaluateFunc(expression, -2);
+      ans = `📝 **دراسة شفعية الدالة ومعاينة التناظر (Parity Check):**\n\n`;
+      if (isNaN(f1) || isNaN(fMinus1)) {
+        ans += `تعذر التحقق تجريبياً بسبب وجود قيم ممنوعة تعرقل الحساب المباشر عند x=2 و x=-2.`;
+      } else {
+        const isEven = Math.abs(f1 - fMinus1) < 0.05;
+        const isOdd = Math.abs(f1 + fMinus1) < 0.05;
+        ans += `نقوم بمقارنة f(2) مع f(-2):\n`;
+        ans += `- f(2) = **${f1.toFixed(2)}**\n- f(-2) = **${fMinus1.toFixed(2)}**\n\n`;
+        if (isEven) {
+          ans += `✓ **الدالة زوجية (Even):** f(-x) = f(x). منحنى الدالة متناظر بالنسبة لمحور التراتيب (y-axis).`;
+        } else if (isOdd) {
+          ans += `✓ **الدالة فردية (Odd):** f(-x) = -f(x). منحنى الدالة متناظر بالنسبة لمركز المعلم (نقطة المبدأ 0).`;
+        } else {
+          ans += `❌ **ليست زوجية وليست فردية:** f(-x) ≠ f(x) و f(-x) ≠ -f(x). لا يوجد تناظر مباشر لمركز المعلم أو محور التراتيب.`;
+        }
+      }
+    } else if (type === "intercepts") {
+      ans = `📝 **نقاط التقاطع مع محوري الإحداثيات:**\n\n`;
+      const yInt = evaluateFunc(expression, 0);
+      ans += `1. **تقاطع مع محور التراتيب (y-axis) [حساب f(0)]:**\n`;
+      ans += isNaN(yInt) ? `   - الدالة غير معرفة عند x=0. لا توجد نقطة تقاطع.\n` : `   - النقطة هي: **(0, ${yInt.toFixed(2)})**.\n\n`;
+      
+      ans += `2. **تقاطع مع محور الفواصل (x-axis) [حل المعادلة f(x) = 0]:**\n`;
+      const xIntercepts: number[] = [];
+      for (let x = -10; x <= 10; x += 0.2) {
+        if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.15)) continue;
+        const v = evaluateFunc(expression, x);
+        const nextV = evaluateFunc(expression, x + 0.2);
+        if (v * nextV < 0 || Math.abs(v) < 0.05) {
+          const approx = Math.round((x + 0.1) * 10) / 10;
+          if (!xIntercepts.includes(approx)) xIntercepts.push(approx);
+        }
+      }
+      if (xIntercepts.length === 0) {
+        ans += `   - لم يُرصد تقاطع صفري مباشر في نطاق المخطط النشط.`;
+      } else {
+        ans += `   - النقاط المقدرة هي: ` + xIntercepts.map(x0 => `**(${x0}, 0)**`).join(" , ");
+      }
+    } else if (type === "param") {
+      ans = `📝 **شرح تفصيلي للمناقشة الوسيطية الحالية للمستقيم (y = m):**\n\n`;
+      ans += `من أجل القيمة الحالية للوسيط الحقيقي m = **${mValue.toFixed(2)}**، المستقيم الأفقي هو ذو المعادلة **y = ${mValue.toFixed(2)}**.\n`;
+      ans += `بملاحظة المخطط البياني وتقاطعه مع هذا الخط الوردي المنقط، نجد:\n`;
+      const solCount = countParameterSolutions();
+      if (solCount === 0) {
+        ans += `- عدد الحلول: **لا توجد حلول حقيقية** (المستقيم لا يقطع المنحنى Cf عند هذا الارتفاع).\n`;
+      } else if (solCount === 1) {
+        ans += `- عدد الحلول: **حل واحد وحيد** موجد في النطاق.\n`;
+      } else if (solCount === 2) {
+        ans += `- عدد الحلول: **حلان حقيقيان متمايزان** (يقطع المستقيم التقاطعي في نقطتين مختلفة).\n`;
+      } else {
+        ans += `- عدد الحلول: **${solCount} حلول حقيقية**.\n`;
+      }
+    } else {
+      // General full intelligence query parsing
+      const q = studentQuestion.toLowerCase();
+      if (q.includes("زوجية") || q.includes("فردية") || q.includes("شفعية") || q.includes("تناظر")) {
+        solveStudentQuestion("parity");
+        return;
+      }
+      if (q.includes("نهاية") || q.includes("نهايات") || q.includes("أطراف")) {
+        solveStudentQuestion("limits");
+        return;
+      }
+      if (q.includes("تقاطع") || q.includes("محو") || q.includes("نقاط")) {
+        solveStudentQuestion("intercepts");
+        return;
+      }
+      if (q.includes("قيمة حدية") || q.includes("عظمى") || q.includes("صغرى") || q.includes("ذروة") || q.includes("تغير")) {
+        solveStudentQuestion("critical");
+        return;
+      }
+      
+      ans = `🤖 **تحليل الأستاذ دالي الذكي لسؤالك:**\n\n`;
+      ans += `لقد سألت عن: "${studentQuestion}"\n`;
+      ans += `بخصوص الدالة الحالية **f(x) = ${expression}**:\n\n`;
+      ans += `- **نقاط التقاطع مع محور الفواصل:** بدراسة سريعة، تدرج صفرية الدالة يدل على وجود تقاطعات في المحاور.\n`;
+      ans += `- **مجال التعريف Df:** الدالة غير معرّفة عند القيم ${forbiddenValues.length > 0 ? forbiddenValues.join(", ") : "لا توجد قيم ممنوعة"}.\n\n`;
+      ans += `💡 يمكنك الضغط على أحد الأسئلة الجاهزة الموضحة بالأسفل للحصول على تحليل رياضي وحساب معزز في لحظات!`;
+    }
+    setSystemAnswer(ans);
+  };
+
+  // Switch to chat tab carrying the question
+  const sendQuestionToChatTab = () => {
+    // We can copy to keyboard or give a friendly hint
+    const textToCopy = `أستاذ دالي، بخصوص الدالة f(x) = ${expression}، لدي سؤال: ${studentQuestion || "كيف أقوم بتمثيل جدول التغيرات ودراسة نهاياتها بالتفصيل؟"}`;
+    navigator.clipboard.writeText(textToCopy);
+    alert("✓ تم نسخ السؤال وصيغة الدالة الحالية إلى حافظتك بنجاح! انتقل الآن لعلامة تبويب 'دردشة الأستاذ دالي' والصقه مباشرة لتكمل نقاشك الذكي 💬");
+  };
+
+  // Generate interactive values for the Variation Table
+  const generateVariationTableData = () => {
+    // We compose a sorted division of segments
+    const pts = [-Infinity];
+    forbiddenValues.forEach(v => pts.push(v));
+    criticalPointsList.forEach(pt => {
+      if (!pts.includes(pt.x)) pts.push(pt.x);
+    });
+    pts.push(Infinity);
+    pts.sort((a,b) => a-b);
+    return pts;
+  };
+
+  const variationSegments = generateVariationTableData();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-right">
+      
+      {/* Top Banner Alert */}
+      <div className="bg-gradient-to-l from-emerald-500/10 to-teal-500/5 p-4 rounded-xl border border-emerald-500/10 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
+          <p className="text-xs sm:text-sm font-bold text-slate-700">الراسم التفاعلي المتطور مع جدول التغيرات وبطاقة طرح الأسئلة الذكية 🇩🇿</p>
+        </div>
+        <div className="text-[11px] bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
+          ثنائي الأبعاد فوري
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left control and text explanations dashboard: 5 columns */}
+        {/* Left Side: Formula control and analytical questions (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           
           {/* Main function formula card input */}
-          <div className="bg-[#111c30] p-5 rounded-2xl border border-white/5 shadow-xl text-right">
-            <h3 className="text-white font-bold text-lg flex items-center gap-2 justify-end mb-4">
-              الرسام والدراسة البيانية f(x)
-              <Activity className="w-5 h-5 text-emerald-400" />
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
+              تحكم بحدود الدالة f(x)
+              <Activity className="w-5 h-5 text-emerald-600" />
             </h3>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-2">الدالة f(x) المراد دراستها (اكتب الصيغة الرياضية):</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">اكتب صيغة الدالة f(x) هنا:</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-3 text-emerald-400 font-mono font-semibold">f(x) =</span>
+                  <span className="absolute left-3.5 top-2.5 text-emerald-600 font-serif font-black text-sm">f(x) =</span>
                   <input 
+                    ref={inputRef}
                     type="text" 
                     value={expression} 
                     onChange={(e) => setExpression(e.target.value)}
                     placeholder="مثال: (x^2 - 1) / (x - 2)"
-                    className="w-full bg-[#0c1322] border border-white/5 rounded-xl pl-16 pr-4 py-2.5 text-left font-mono text-white text-sm focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl pl-16 pr-4 py-2.5 text-left font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                   />
-                </div>
-                <div className="mt-2 text-[11px] text-gray-400 leading-relaxed">
-                  💡 اختصارات ذكية: <code className="text-emerald-400 font-mono font-normal">*</code> للضرب، <code className="text-emerald-400 font-mono font-normal">^</code> للأس، <code className="text-emerald-400 font-mono font-normal">/</code> للقسمة، <code className="text-emerald-500">Math.exp(x)</code> للدالة الأسية $e^x$.
                 </div>
               </div>
 
-              {/* Grid with sliders for asymptotes and tangent parameters */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#0b1322] p-3 rounded-xl border border-white/5">
-                  <label className="block text-[11px] text-gray-400 mb-1.5 font-medium">نقطة التماس x₀:</label>
+              {/* Mathematical Shortcut Keyboard Panel */}
+              <div className="bg-slate-50 hover:bg-slate-100/70 p-3 rounded-xl border border-slate-200 space-y-2 transition-colors">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-500 flex items-center gap-1 justify-end">
+                  لوحة إدخال الرموز والدوال الرياضية السريعة
+                  <Keyboard className="w-3.5 h-3.5 text-emerald-500" />
+                </span>
+                
+                <div className="grid grid-cols-5 gap-1.5 font-mono text-xs font-black select-none">
+                  <button onClick={() => insertSymbol("exp")} className="bg-white hover:bg-emerald-50 hover:border-emerald-200 text-emerald-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">eˣ</button>
+                  <button onClick={() => insertSymbol("ln")} className="bg-white hover:bg-emerald-50 hover:border-emerald-200 text-emerald-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">ln(x)</button>
+                  <button onClick={() => insertSymbol("^2")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x²</button>
+                  <button onClick={() => insertSymbol("^3")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x³</button>
+                  <button onClick={() => insertSymbol("sqrt")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">√x</button>
+                  
+                  <button onClick={() => insertSymbol("sin")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">sin</button>
+                  <button onClick={() => insertSymbol("cos")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">cos</button>
+                  <button onClick={() => insertSymbol("pi")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">π</button>
+                  <button onClick={() => insertSymbol("/")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">/</button>
+                  <button onClick={() => insertSymbol("*")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">*</button>
+
+                  <button onClick={() => insertSymbol("+")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">+</button>
+                  <button onClick={() => insertSymbol("-")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">-</button>
+                  <button onClick={() => insertSymbol("(")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">(</button>
+                  <button onClick={() => insertSymbol(")")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">)</button>
+                  <button onClick={clearExpression} className="bg-rose-50 hover:bg-rose-100 hover:border-rose-200 text-rose-600 py-1.5 border border-rose-150 rounded-lg shadow-sm transition active:scale-95 cursor-pointer text-[10px] font-bold">مسح C</button>
+                </div>
+              </div>
+
+              {/* Sliders for auxiliary evaluation */}
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">نقطة التماس x₀:</label>
                   <input 
                     type="range"
                     min="-8"
@@ -445,43 +617,43 @@ export default function MathFunctionSection() {
                     step="0.5"
                     value={tangentPoint}
                     onChange={(e) => setTangentPoint(parseFloat(e.target.value))}
-                    className="w-full accent-amber-500 bg-white/5 rounded-lg h-1.5"
+                    className="w-full accent-amber-500 bg-white rounded-lg h-1.5"
                   />
-                  <div className="flex justify-between items-center text-xs text-amber-500 font-mono font-bold mt-1">
+                  <div className="flex justify-between items-center text-xs text-amber-600 font-mono font-bold mt-1 shadow-sm">
                     <span>{tangentPoint}</span>
                     <span>x₀</span>
                   </div>
                 </div>
 
-                <div className="bg-[#0b1322] p-3 rounded-xl border border-white/5">
-                  <label className="block text-[11px] text-gray-400 mb-1.5 font-medium">المقارب المائل y = </label>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">المقارب المائل y = </label>
                   <input 
                     type="text"
                     value={obliqueAsymptoteExpr}
                     onChange={(e) => setObliqueAsymptoteExpr(e.target.value)}
                     placeholder="مثال: x + 2"
-                    className="w-full bg-[#0c1322] border border-white/5 rounded-lg px-2.5 py-1 text-left font-mono text-emerald-400 text-xs focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-left font-mono text-emerald-600 text-xs focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                <label className="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 flex-wrap gap-2 text-xs font-bold text-slate-600">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input 
                     type="checkbox"
                     checked={showTangent}
                     onChange={(e) => setShowTangent(e.target.checked)}
-                    className="accent-amber-500 rounded"
+                    className="accent-amber-500 cursor-pointer"
                   />
                   رسم المماس (Orange)
                 </label>
 
-                <label className="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input 
                     type="checkbox"
                     checked={showOblique}
                     onChange={(e) => setShowOblique(e.target.checked)}
-                    className="accent-emerald-500 rounded"
+                    className="accent-emerald-500 cursor-pointer"
                   />
                   رسم المستقيم المقارب (Green)
                 </label>
@@ -489,138 +661,248 @@ export default function MathFunctionSection() {
             </div>
           </div>
 
-          {/* Tabbed Detailed Math Analysis Report Container */}
-          <div className="bg-[#111c30] p-5 rounded-2xl border border-white/5 shadow-xl text-right space-y-4">
-            <h4 className="text-white font-black text-sm border-b border-white/5 pb-2 uppercase tracking-wide flex items-center justify-end gap-1.5">
-              تقرير الدراسة المفصل للدالة f
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-            </h4>
+          {/* Interactive m-parameter horizontal discussion module */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-right space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="bg-pink-100 text-[#ec4899] text-[10px] px-2 py-0.5 rounded-full border border-pink-200 font-bold">تفاعلي</span>
+              <span className="text-sm font-black text-slate-800">📊 المناقشة الوسيطية الأفقية (y = m):</span>
+            </div>
+            
+            {/* Horizontal slider for m */}
+            <input 
+              type="range"
+              min="-8"
+              max="8"
+              step="0.1"
+              value={mValue}
+              onChange={(e) => setMValue(parseFloat(e.target.value))}
+              className="w-full accent-pink-500 bg-slate-50 rounded-lg h-1.5 mb-2"
+            />
 
-            <div className="space-y-4 text-xs md:text-sm">
-              {/* Forbidden values module */}
-              <div className="bg-[#0c1322] p-3.5 rounded-xl border border-red-950/20">
-                <span className="text-xs font-bold text-red-400 block mb-1">⚠️ القيم الممنوعة ومجموعة التعريف Df:</span>
-                <p className="text-gray-300 leading-relaxed font-mono">
-                  {forbiddenValues.length > 0 
-                    ? `مجموعة التعريف Df = R - { ${forbiddenValues.join(", ")} } \n (الدالة غير معرفة عند هذه النقاط التي تعدم المقام)`
-                    : "الدالة معرفة ومستمرة على كل الأعداد الحقيقية Df = R"
-                  }
-                </p>
+            <div className="flex justify-between items-center text-xs font-bold text-slate-600 mb-2">
+              <span>قيمة m الحالية: <strong className="text-pink-600 font-mono text-sm">{mValue.toFixed(1)}</strong></span>
+              <span>عدد نقاط التقاطع: <span className="bg-pink-50 text-[#ec4899] px-2.5 py-0.5 rounded-md border border-pink-100 font-extrabold font-mono text-sm">{countParameterSolutions()}</span></span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+              تحديد بياني لعدد حلول المعادلة f(x) = m وهو الحل المشترك والتقاطعي بين منحنى الدالة Cf والمستقيم الأفقي الوردي المنقط.
+            </p>
+          </div>
+
+          {/* Interactive Student Question and AI solver board */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
+              المساعد الذكي: اسأل عن الدالة f(x)
+              <QuestionIcon className="w-5 h-5 text-emerald-600" />
+            </h3>
+
+            <div className="space-y-3">
+              <textarea 
+                value={studentQuestion}
+                onChange={(e) => setStudentQuestion(e.target.value)}
+                placeholder="اكتب سؤالك بخصوص الدالة هنا... (مثال: هل الدالة زوجية؟ أو ما هي نقاط التقاطع؟)"
+                className="w-full p-3 font-semibold bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right leading-relaxed h-16"
+              />
+
+              <div className="flex flex-wrap gap-1.5 justify-end">
+                <button onClick={() => solveStudentQuestion("parity")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">شفعية الدالة؟</button>
+                <button onClick={() => solveStudentQuestion("intercepts")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">نقاط التقاطع؟</button>
+                <button onClick={() => solveStudentQuestion("limits")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">النهايات وأطراف Df؟</button>
+                <button onClick={() => solveStudentQuestion("critical")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">القيم الحدية؟</button>
+                <button onClick={() => solveStudentQuestion("param")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-s600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">المناقشة m؟</button>
               </div>
 
-              {/* Tangent equation display */}
-              <div className="bg-[#0c1322] p-3.5 rounded-xl border border-amber-950/20">
-                <span className="text-xs font-bold text-amber-500 block mb-1">📐 معادلة المماس عند النقطة ذات الفاصلة {tangentPoint}:</span>
-                <p className="text-gray-300 font-mono leading-relaxed">
-                  {getTangentEquation()}
-                </p>
-                <span className="text-[10px] text-gray-400 mt-1 block">
-                  ميل المماس يعبر عن العدد المشتق f'({tangentPoint}) = {computeDerivative(tangentPoint).toFixed(2)}
-                </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => solveStudentQuestion("general")}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 shadow transition cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>تحليل السؤال</span>
+                </button>
+                <button 
+                  onClick={sendQuestionToChatTab}
+                  className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>مناقشة بالدردشة 💬</span>
+                </button>
               </div>
 
-              {/* Interactive m-parameter horizontal discussion module */}
-              <div className="bg-[#0c1322] p-3.5 rounded-xl border border-pink-950/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="bg-pink-500/10 text-pink-400 text-[10px] px-2 py-0.5 rounded-full border border-pink-500/20">تفاعلي</span>
-                  <span className="text-xs font-bold text-pink-400">📊 المناقشة الوسيطية الأفقية (y = m):</span>
+              {systemAnswer && (
+                <div className="bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right space-y-2 max-h-60 overflow-y-auto whitespace-pre-wrap">
+                  {systemAnswer}
                 </div>
-                
-                {/* Horizontal slider for m */}
-                <input 
-                  type="range"
-                  min="-8"
-                  max="8"
-                  step="0.1"
-                  value={mValue}
-                  onChange={(e) => setMValue(parseFloat(e.target.value))}
-                  className="w-full accent-pink-500 bg-white/5 rounded-lg h-1.5 mb-2.5"
-                />
-
-                <div className="flex justify-between items-center text-xs font-semibold text-gray-300 mb-2">
-                  <span>قيمة m الحالية: <strong className="text-pink-400 font-mono">{mValue.toFixed(1)}</strong></span>
-                  <span>عدد نقاط التقاطع: <span className="bg-pink-500/10 px-2 py-0.5 rounded border border-pink-500/20 font-bold font-mono text-pink-400">{countParameterSolutions()}</span></span>
-                </div>
-
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  تحديد بياني لعدد حلول المعادلة f(x) = m وهو يمثل الإحداثيات الأفقية لتقاطع المنحنى Cf مع المستقيم الأفقي y = m.
-                </p>
-              </div>
-
+              )}
             </div>
           </div>
 
         </div>
 
-        {/* Right canvas plotter representation: 7 columns */}
+        {/* Right Side: Graphing Screen and dynamic variations table (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           
-          {/* Coordinates graph board card wrapper */}
-          <div className="bg-[#111c30] p-4 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between px-2 mb-3">
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span> f(x)
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 ml-2"></span> مقارب مائل
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 ml-2"></span> مماس
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-pink-500 ml-2"></span> الوسيط m
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ml-2"></span> مقارب عمودي
+          {/* Canvas coordinate plotter card */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 flex-wrap">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500"></span> f(x)
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span> مقارب مائل
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span> مماس
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-pink-500"></span> الوسيط m
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span> مقارب عمودي
               </div>
-              <h4 className="text-white font-bold text-sm">المعلم ومستوي الرسم Cf</h4>
+              <h4 className="text-slate-800 font-black text-sm">المعلم والمنحنى البياني Cf</h4>
             </div>
 
-            {/* Canvas screen */}
-            <div className="bg-[#090d16] rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+            {/* Canvas viewport display */}
+            <div className="bg-slate-50 rounded-xl border border-slate-150 overflow-hidden flex items-center justify-center py-1">
               <canvas 
                 ref={canvasRef}
                 width={500}
                 height={400}
-                className="max-w-full h-auto cursor-crosshair block bg-[#090d16]"
+                className="max-w-full h-auto cursor-crosshair rounded-xl shadow-sm border border-slate-200"
               />
             </div>
             
-            <p className="text-center text-[10px] text-gray-500 mt-2.5">
-              شبكة ثنائية الأبعاد من -10 إلى +10 على كلا المحورين. يتم إسقاط المستقيمات المقاربة أوتوماتيكياً.
+            <p className="text-center text-[10px] text-slate-400 font-bold">
+              معلم متعامد ومتجانس من -10 إلى +10 على كلا المحورين. يتم الحساب الفوري للإشارات والتقاطعات.
+            </p>
+          </div>
+
+          {/* Table of Variations - جدول التغيرات تفاعلي وواضح */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-right">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-150">
+              <span className="text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200 font-bold font-mono">Df نشيط</span>
+              <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
+                جدول تغيرات الدالة f(x) التفاعلي
+                <HelpCircle className="w-5 h-5 text-emerald-600" />
+              </h4>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-center text-xs md:text-sm font-bold border-collapse border border-slate-200">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600">
+                    <th className="border border-slate-200 p-2 w-16">المجال</th>
+                    <th className="border border-slate-200 p-2 font-mono">-∞</th>
+                    {forbiddenValues.map((fv) => (
+                      <React.Fragment key={`fv-${fv}`}>
+                        <th className="border border-slate-200 p-2 text-rose-500 font-mono">{fv} (ممنوعة)</th>
+                      </React.Fragment>
+                    ))}
+                    {criticalPointsList.map((pt) => (
+                      <React.Fragment key={`crit-${pt.x}`}>
+                        <th className="border border-slate-200 p-2 text-amber-600 font-mono">{pt.x} (ذروة)</th>
+                      </React.Fragment>
+                    ))}
+                    <th className="border border-slate-200 p-2 font-mono">+∞</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Derivative Row */}
+                  <tr className="text-slate-700 bg-white">
+                    <td className="border border-slate-200 p-2 font-black bg-slate-50">إشارة f'(x)</td>
+                    <td className="border border-slate-200 p-2 font-mono">
+                      {computeDerivative(-5) > 0 ? "+" : "-"}
+                    </td>
+                    {forbiddenValues.map((fv) => (
+                      <React.Fragment key={`fv-d-${fv}`}>
+                        <td className="border border-slate-200 p-2 text-rose-500 font-bold font-mono">||</td>
+                        <td className="border border-slate-200 p-2 font-mono">
+                          {computeDerivative(fv + 0.1) > 0 ? "+" : "-"}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                    {criticalPointsList.map((pt) => (
+                      <React.Fragment key={`crit-d-${pt.x}`}>
+                        <td className="border border-slate-200 p-2 text-amber-600 font-bold font-mono">0</td>
+                        <td className="border border-slate-200 p-2 font-mono">
+                          {computeDerivative(pt.x + 0.5) > 0 ? "+" : "-"}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                    <td className="border border-slate-200 p-2 font-mono"></td>
+                  </tr>
+                  
+                  {/* Function Values & Arrows Row */}
+                  <tr className="text-slate-800 bg-slate-50/30">
+                    <td className="border border-slate-200 p-3 font-black bg-slate-50">تغيرات f(x)</td>
+                    <td className="border border-slate-200 p-3 text-slate-500 text-[10px]">
+                      {evaluateFunc(expression, -10) > 0 ? "متناقصة..." : "متزايدة..."}
+                    </td>
+                    {forbiddenValues.map((fv) => {
+                      const leftSign = evaluateFunc(expression, fv - 0.05) > 0 ? "↗" : "↘";
+                      const rightSign = evaluateFunc(expression, fv + 0.05) > 0 ? "↗" : "↘";
+                      return (
+                        <React.Fragment key={`fv-f-${fv}`}>
+                          <td className="border-x border-slate-200 p-3 text-rose-500 font-extrabold text-base">||</td>
+                          <td className="border border-slate-200 p-3 text-emerald-600 text-sm">
+                            {rightSign}
+                          </td>
+                        </React.Fragment>
+                      );
+                    })}
+                    {criticalPointsList.map((pt) => (
+                      <React.Fragment key={`crit-f-${pt.x}`}>
+                        <td className="border border-slate-200 p-3 text-amber-600 text-xs">
+                          f({pt.x}) = <strong className="font-mono text-slate-800">{pt.y}</strong>
+                        </td>
+                        <td className="border border-slate-200 p-3 text-emerald-600 text-sm">
+                          {computeDerivative(pt.x + 0.5) > 0 ? "↗" : "↘"}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                    <td className="border border-slate-200 p-3 text-slate-500 text-[10px]">
+                      {evaluateFunc(expression, 10) > evaluateFunc(expression, 5) ? "↗ متزايدة" : "↘ متناقصة"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+              💡 يظهر الرمز <span className="text-rose-500">||</span> خطوط حائطية عمودية دلالة على عدم استمرارية الدالة بسبب وجود قيمة ممنوعة في المقام.
             </p>
           </div>
 
           {/* Intermediate Value Theorem widget */}
-          <div className="bg-[#111c30] p-5 rounded-2xl border border-white/5 shadow-xl text-right space-y-4">
-            <h4 className="text-white font-bold text-base flex items-center gap-2 justify-end">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
               التحقق من مبرهنة القيم المتوسطة (T.V.I)
-              <Scale className="w-5 h-5 text-emerald-400" />
+              <Scale className="w-5 h-5 text-emerald-600" />
             </h4>
 
-            <div className="space-y-4">
-              <p className="text-xs text-gray-300 leading-relaxed">
-                ادرس وجود حل للمعادلة f(x) = 0 على مجال محدد [a, b] بمراقبة تغير إشارة الدالة:
+            <div className="space-y-3.5">
+              <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                ادرس وجود حل صفري للمعادلة f(x) = 0 على مجال محدد [a, b] بمراقبة وتتبع تغيرات إشارة الدالة:
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#0b1322] p-3 rounded-xl border border-white/5">
-                  <label className="block text-[11px] text-gray-400 mb-1 font-medium">الحد الأقصى للمجال b:</label>
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">الحد الأقصى للمجال b:</label>
                   <input 
                     type="number" 
                     step="0.5"
                     value={intervalB} 
                     onChange={(e) => setIntervalB(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0c1322] border border-white/5 rounded-lg px-3 py-1 text-left font-mono text-white text-sm focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1 text-left font-mono text-slate-800 text-sm focus:outline-none"
                   />
                 </div>
 
-                <div className="bg-[#0b1322] p-3 rounded-xl border border-white/5">
-                  <label className="block text-[11px] text-gray-400 mb-1 font-medium">الحد الأدنى لـ المجال a:</label>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">الحد الأدنى لـ المجال a:</label>
                   <input 
                     type="number" 
                     step="0.5"
                     value={intervalA} 
                     onChange={(e) => setIntervalA(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0c1322] border border-white/5 rounded-lg px-3 py-1 text-left font-mono text-white text-sm focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1 text-left font-mono text-slate-800 text-sm focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Result output feedback box */}
-              <div className="bg-emerald-500/5 text-emerald-400 border border-emerald-500/10 p-4 rounded-xl text-xs md:text-sm leading-relaxed text-right font-medium">
+              <div className="bg-emerald-50 text-emerald-800 border border-emerald-100 p-4 rounded-xl text-xs md:text-sm leading-relaxed text-right font-medium">
                 {checkMVT_Result()}
               </div>
             </div>
