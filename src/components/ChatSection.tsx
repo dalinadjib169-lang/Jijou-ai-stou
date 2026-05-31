@@ -116,6 +116,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
     // Copying image states and cleaning previews to keep viewport clean
     const currentBase64 = selectedImageBase64;
     const currentMime = selectedImageMime;
+
     setSelectedImageBase64(null);
     setSelectedImageMime(null);
     setImagePreviewUrl(null);
@@ -153,9 +154,21 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: "assistant",
-        text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${err.message}". أعد المحاولة وسأوضح لك كل شيء. صلي عل�  return (
+        text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${err.message}". أعد المحاولة وسأوضح لك كل شيء. صلي على محمد ووحد الله.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
+  };
+
+  return (
     <div className="flex flex-col h-[650px] bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      
       {/* Top Profile Header */}
       <div className="bg-slate-50 px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
         <div className="flex items-center gap-4">
@@ -402,23 +415,6 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
           <span>تذكير: بعد كل شرح سيسألك الأستاذ دالي سؤالاً ذكياً لتأكيد الاستيعاب!</span>
           <span className="flex items-center gap-1 font-semibold">
             صلي على محمد وآله وصحبه <span className="text-emerald-500 font-bold">♥</span>
-          </span>
-        </div>
-      </div>
-    </div>)}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:text-emerald-400/50 text-white font-bold p-3 rounded-xl transition-all duration-200 shadow-md shadow-emerald-950/20 shrink-0"
-          >
-            {isSending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5 transform rotate-180" />
-            )}
-          </button>
-        </form>
-        <div className="flex items-center justify-between px-1 text-[11px] text-gray-500">
-          <span>تذكير: بعد كل شرح سيسألك الأستاذ دالي سؤالاً ذكياً لتأكيد الاستيعاب!</span>
-          <span className="flex items-center gap-1">
-            صلي على محمد وآله وصحبه <span className="text-emerald-500">♥</span>
           </span>
         </div>
       </div>
