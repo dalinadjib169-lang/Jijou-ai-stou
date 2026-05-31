@@ -1,0 +1,30 @@
+{
+  "entities": {
+    "Settings": {
+      "title": "Settings",
+      "description": "System settings managed by Professor Dali, including welcome message, profile photo URL, and API keys for rotation.",
+      "type": "object",
+      "properties": {
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL of Professor Dali's profile picture."
+        },
+        "welcomeMessage": {
+          "type": "string",
+          "description": "Custom greeting message sent when a student starts a chat."
+        },
+        "apiKeys": {
+          "type": "array",
+          "description": "List of rotated Gemini API keys."
+        }
+      },
+      "required": ["profileImageUrl", "welcomeMessage", "apiKeys"]
+    }
+  },
+  "firestore": {
+    "settings/dali": {
+      "schema": "Settings",
+      "description": "Active settings document."
+    }
+  }
+}

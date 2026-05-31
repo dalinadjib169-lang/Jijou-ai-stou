@@ -1,0 +1,6 @@
+{
+  "name": "Pro DZ Dali",
+  "description": "تطبيق الأستاذ دالي نجيب لمساعدة طلاب الرياضيات في دراسة الدوال ومحاورتهم بالذكاء الاصطناعي.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
