@@ -97,13 +97,13 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
     base64Image?: string | null,
     mimeType?: string | null
   ): Promise<string> => {
-    // 1. Load active rotated API keys and filter out descriptive labels
+    // 1. Load active rotated API keys and filter out descriptive labels & invalid truncated keys
     const rawKeys = apiKeys || [];
-    let cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
+    let cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy") && !k.includes("...") && !k.includes("…") && !k.includes("."));
     
     // In case no keys start with AIzaSy, get whatever keys are there (excluding labels based on lengths/chars)
     if (cleanKeys.length === 0) {
-      cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
+      cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
     }
 
     let activeKey = "";
@@ -118,9 +118,9 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            let cleanStored = parsed.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
+            let cleanStored = parsed.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy") && !k.includes("...") && !k.includes("…") && !k.includes("."));
             if (cleanStored.length === 0) {
-              cleanStored = parsed.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
+              cleanStored = parsed.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
             }
             if (cleanStored.length > 0) {
               activeKey = cleanStored[Math.floor(Math.random() * cleanStored.length)];

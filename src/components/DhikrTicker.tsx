@@ -41,7 +41,7 @@ export default function DhikrTicker() {
   const [selectedCategory, setSelectedCategory] = useState<"morning" | "evening" | "sleep" | "general" | "all">("all");
   const [tickerSpeed, setTickerSpeed] = useState<number>(1); // default slow and peaceful speed
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [direction, setDirection] = useState<"rtl" | "ltr">("ltr"); // ltr scrolls left-to-right, rtl scrolls right-to-left
+  const [direction, setDirection] = useState<"rtl" | "ltr">("rtl"); // rtl scrolls right-to-left, ltr scrolls left-to-right
 
   // Filter based on selected tab
   const filteredDhikr = selectedCategory === "all" 

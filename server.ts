@@ -41,7 +41,7 @@ async function getRotatedApiKey(): Promise<string> {
     for (const [key, value] of Object.entries(process.env)) {
       if (value && typeof value === "string") {
         const trimmed = value.trim();
-        if (trimmed.startsWith("AIzaSy")) {
+        if (trimmed.startsWith("AIzaSy") && !trimmed.includes(".") && !trimmed.includes("...") && !trimmed.includes("…")) {
           candidateKeys.push(trimmed);
         }
       }
@@ -58,10 +58,13 @@ async function getRotatedApiKey(): Promise<string> {
       const data = docSnap.data();
       const keys = data.apiKeys || [];
       if (Array.isArray(keys)) {
-        // Filter keys starting with AIzaSy or having key characteristics
-        let validKeys = keys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
+        // Filter keys starting with AIzaSy or having key characteristics and not containing masking dots
+        let validKeys = keys.map(k => String(k).trim())
+          .filter(k => k.startsWith("AIzaSy") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
+        
         if (validKeys.length === 0) {
-          validKeys = keys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
+          validKeys = keys.map(k => String(k).trim())
+            .filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
         }
         validKeys.forEach(k => {
           if (!candidateKeys.includes(k)) {
@@ -76,7 +79,7 @@ async function getRotatedApiKey(): Promise<string> {
 
   // 3. Fallback to standard GEMINI_API_KEY if found and valid
   const defaultKey = (process.env.GEMINI_API_KEY || "").trim();
-  if (defaultKey && defaultKey.startsWith("AIzaSy") && !candidateKeys.includes(defaultKey)) {
+  if (defaultKey && defaultKey.startsWith("AIzaSy") && !defaultKey.includes(".") && !defaultKey.includes("...") && !defaultKey.includes("…") && !candidateKeys.includes(defaultKey)) {
     candidateKeys.push(defaultKey);
   }
 

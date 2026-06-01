@@ -732,14 +732,6 @@ f(x) = ${expression}
                 className="w-full p-3 font-semibold bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right leading-relaxed h-16"
               />
 
-              <div className="flex flex-wrap gap-1.5 justify-end">
-                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("parity")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">شفعية الدالة؟</button>
-                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("intercepts")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">نقاط التقاطع؟</button>
-                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("limits")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">النهايات وأطراف Df؟</button>
-                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("critical")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">القيم الحدية؟</button>
-                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("param")} className="bg-slate-100 font-bold hover:bg-slate-200 text-[#ea580c] text-[10px] px-2.5 py-1.5 rounded-lg border border-orange-200/50 hover:border-orange-300 transition select-none disabled:opacity-50 font-black">المناقشة m؟</button>
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={() => solveStudentQuestion("general")}

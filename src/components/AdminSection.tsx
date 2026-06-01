@@ -147,6 +147,17 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
   const addApiKey = () => {
     const keyTrimmed = newKey.trim();
     if (!keyTrimmed) return;
+
+    // Check for masked/truncated key containing dots (extremely common user copy-paste error from consoles)
+    if (keyTrimmed.includes("...") || keyTrimmed.includes("…") || keyTrimmed.includes(" . . . ") || keyTrimmed.includes(".")) {
+      alert("⚠️ يا أستاذنا القدير دالي نجيب، يبدو أنك قمت بنسخ المفتاح بالتنقيط (...) من لوحة جوجل مباشرة دون إظهاره كاملاً!\n\nيرجى فتح موقع Google AI Studio والنقر على زر 'نسخ' (Copy) الفعلي بجانب المفتاح، أو النقر على رمز 'العين' لإظهار كامل حروف المفتاح دون تنقيط قبل نسخه ومشاركته هنا. 🇩🇿");
+      return;
+    }
+
+    if (!keyTrimmed.startsWith("AIzaSy")) {
+      alert("⚠️ تنبيه: المفتاح الذي أدخلته لا يبدأ بـ AIzaSy. يرجى التأكد من نسخه بشكل صحيح.");
+    }
+
     if (keysList.includes(keyTrimmed)) {
       alert("هذا المفتاح مضاف بالفعل.");
       return;
@@ -429,21 +440,38 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
                       <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-800/80 max-h-36 overflow-y-auto">
-                      {keysList.map((k, index) => (
-                        <div key={index} className="flex items-center justify-between py-2 text-xs font-mono font-bold">
-                          <button
-                            onClick={() => removeApiKey(index)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-950/40 p-1.5 rounded transition-colors cursor-pointer"
-                            title="إزالة هذا المفتاح"
+                    <div className="divide-y divide-slate-800/80 max-h-48 overflow-y-auto space-y-1">
+                      {keysList.map((k, index) => {
+                        const isInvalid = k.includes("...") || k.includes("…") || k.includes(".");
+                        return (
+                          <div 
+                            key={index} 
+                            className={`flex items-center justify-between p-2 rounded-lg text-xs font-mono font-bold transition-colors ${
+                              isInvalid 
+                                ? 'bg-red-950/40 border border-red-500/30 text-red-200' 
+                                : 'text-slate-400 hover:bg-slate-900/50'
+                            }`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="text-slate-400 truncate max-w-sm font-mono">
-                            {k.substring(0, 10)}...{k.substring(k.length - 8)}
-                          </span>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => removeApiKey(index)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-950/40 p-1.5 rounded transition-colors cursor-pointer"
+                                title="إزالة هذا المفتاح"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              {isInvalid && (
+                                <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] px-1.5 py-0.5 rounded font-sans shrink-0 font-extrabold animate-pulse">
+                                  ⚠️ مفتاح مشفر/غير مكتمل
+                                </span>
+                              )}
+                            </div>
+                            <span className={`truncate max-w-xs font-mono text-left block direction-ltr ${isInvalid ? 'line-through text-red-350 opacity-80' : 'text-slate-350'}`}>
+                              {k.length > 20 ? `${k.substring(0, 10)}...${k.substring(k.length - 8)}` : k}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
