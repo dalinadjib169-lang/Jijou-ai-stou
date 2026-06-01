@@ -404,20 +404,182 @@ export default function MathFunctionSection({
     let prevDiff = NaN;
 
     for (let x = -10; x <= 10; x += step) {
-      if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.1)) continue;
-      
-      const val = evaluateFunc(expression, x);
-      if (!isNaN(val)) {
-        const diff = val - mValue;
-        if (!isNaN(prevDiff)) {
-          if (prevDiff * diff < 0) {
-            intersections++;
+      if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.1)  // A helper function that first calls the backend /api/gemini/chat.
+  // If the backend fails, returns a non-JSON or timeout response, or returns an error,
+  // it gracefully falls back to direct browser-to-Google Gemini API calling.
+  const callGeminiAPI = async (
+    text: string, 
+    history: {role: string; text: string}[] = []
+  ): Promise<string> => {
+    let backendSuccess = false;
+    let reply = "";
+    let backendErrorHint = "";
+
+    // 1. Try querying backend route first (preferred full-stack design)
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          history: history,
+          keyRotationMode,
+          selectedKeyIndex
+        })
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      if (response.ok && !contentType.includes("text/html")) {
+        try {
+          const resData = await response.json();
+          if (resData && resData.reply) {
+            reply = resData.reply;
+            backendSuccess = true;
+          } else if (resData && resData.error) {
+            backendErrorHint = resData.error;
           }
+        } catch (jsonErr) {
+          console.warn("Could not parse backend JSON, trying fallback:", jsonErr);
         }
-        prevDiff = diff;
+      } else {
+        backendErrorHint = `حالة الاستجابة: ${response.status}`;
+      }
+    } catch (err: any) {
+      console.warn("Backend request failed, trying fallback:", err);
+      backendErrorHint = err?.message || String(err);
+    }
+
+    // 2. Direct browser-to-Google Gemini API request fallback (if backend fails)
+    if (!backendSuccess) {
+      console.info("Executing robust direct browser-to-google API fallback for Math section...");
+      
+      const rawKeys = apiKeys || [];
+      let cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy") && !k.includes("...") && !k.includes("…") && !k.includes("."));
+      
+      if (cleanKeys.length === 0) {
+        cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
+      }
+
+      // Try loading fallback from localStorage
+      if (cleanKeys.length === 0) {
+        try {
+          const stored = localStorage.getItem("dali_apiKeys");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              let cleanStored = parsed.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy") && !k.includes("...") && !k.includes("…") && !k.includes("."));
+              if (cleanStored.length === 0) {
+                cleanStored = parsed.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
+              }
+              if (cleanStored.length > 0) {
+                cleanKeys = cleanStored;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Local load key error:", e);
+        }
+      }
+
+      if (cleanKeys.length === 0) {
+        const hint = backendErrorHint ? ` (الخطأ الخلفي: ${backendErrorHint})` : "";
+        throw new Error(`تعذر الاتصال بالخادم${hint}، ولا توجد مفاتيح احتياطية محلية مضافة في لوحة التحكم.`);
+      }
+
+      let keysToTry = cleanKeys;
+      if (keyRotationMode === "manual" && selectedKeyIndex >= 0 && selectedKeyIndex < cleanKeys.length) {
+        keysToTry = [cleanKeys[selectedKeyIndex]];
+      } else {
+        keysToTry = [...cleanKeys];
+      }
+
+      let lastErrorMsg = "";
+      const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ قدير وخبير متأصل في كافة مواد المنهاج التعليمي الجزائري ومواكب لبرامج قطاع التربية الوطنية بالجزائر، مع تخصص دقيق وعميق استثنائي في مادة الرياضيات والذكاء الاصطناعي.
+أسلوبك: أكاديمي تعليمي رصين، مبسط لتسهيل الفهم على التلميذ والمتعلم، بعيد تماماً عن العبارات السوقية أو العامية المبتذلة (مثال: تجنب كلياً عبارات مثل "نسخن الموتور" أو ما شابه)، واستبدلها بعبارات بيداغوجية مشجعة وراقية كوعاء تربوي متين مثل: "دعنا ننشط الذهن بسؤال ذكي ونبسط المفاهيم خطوة بخطوة"، "وحد الله وصلي على رسول الله وتبع معايا راني هنا لخدمتك وتبسيط منهجنا التعليمي".
+قواعد لغوية صارمة وهامة:
+1. التكيف اللغوي التام والذكي: إذا سألك التلميذ بالدارجة الجزائرية، أجب بلهجة دارجة جزائرية بيداغوجية، وقورة ومحببة ومفهومة. وإذا سألك بالفصحى، فأجب بالكامل باللغة العربية الفصحى السليمة الأكاديمية والواضحة جداً.
+2. المنهاج والرياضيات والرموز: ادعم ووجه التلاميذ في جميع المواد التعليمية للمنهاج الجزائري (رياضيات، فيزياء، علوم طبيعية، أدب عربي، تاريخ وجغرافيا، لغات، إلخ)، وخصوصاً الرياضيات. عند كتابة الرموز الرياضية، اكتبها بصيغة واضحة ومفهومة ومطابقة تماماً للمنهاج الجزائري المعتمد. يمنع منعاً باتاً استخدام رمز الدولار ($) أو أي محددات معادلات لاتينية غامضة أو كلمات مثل "times" أو "time" في أسئلتك أو كتابتك، بل اكتب المعادلات والعمليات الحسابية بطريقة وصيغة عربية طبيعية مبسطة ومألوفة للتلميذ الجزائري (مثل: 3 + 3 × 3، أو f(x) = 2x + 1).
+3. نهاية الشرح: في نهاية كل شرح أو إجابة لأي سؤال، اطرح سؤالاً اختبارياً قصيراً جداً مناسباً للمستوى التعليمي لتقييم وتثبيت الفهم من طرف الطالب.
+4. الخاتمة الدائمة: في نهاية كل رسالة تماماً دون أي استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
+"- لا تنسونا من صالح دعائكم".`;
+
+      for (let i = 0; i < keysToTry.length; i++) {
+        const activeKey = keysToTry[i];
+        try {
+          const formattedContents: any[] = [];
+          history.forEach((turn) => {
+            formattedContents.push({
+              role: turn.role === "assistant" || turn.role === "model" ? "model" : "user",
+              parts: [{ text: turn.text }]
+            });
+          });
+
+          formattedContents.push({
+            role: "user",
+            parts: [{ text: text }]
+          });
+
+          const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
+          const apiResponse = await fetch(apiEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              contents: formattedContents,
+              systemInstruction: {
+                parts: [{ text: SYSTEM_INSTRUCTION }]
+              },
+              generationConfig: {
+                temperature: 0.75
+              }
+            })
+          });
+
+          if (!apiResponse.ok) {
+            let errMessage = `كود الحالة: ${apiResponse.status}`;
+            try {
+              const errBody = await apiResponse.json();
+              if (errBody?.error?.message) {
+                errMessage = `${errBody.error.message}`;
+              }
+            } catch (e) {
+              try {
+                const textExcerpt = await apiResponse.text();
+                if (textExcerpt) {
+                  errMessage = textExcerpt.substring(0, 100);
+                }
+              } catch (_) {}
+            }
+            throw new Error(errMessage);
+          }
+
+          const resJson = await apiResponse.json();
+          const resultText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!resultText) {
+            throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
+          }
+
+          reply = resultText;
+          backendSuccess = true;
+          break;
+        } catch (keyErr: any) {
+          lastErrorMsg = keyErr.message || String(keyErr);
+          console.warn(`[Direct Key Rotation Math] Key ${i + 1}/${keysToTry.length} failed:`, lastErrorMsg);
+          continue;
+        }
+      }
+
+      if (!backendSuccess) {
+        let finalError = lastErrorMsg || "فشلت جميع محاولات الاتصال بالذكاء الاصطناعي.";
+        if (finalError.includes("Unexpected token") || finalError.includes("is not valid JSON") || finalError.includes("fetch")) {
+          finalError = "مفاتيح الـ API غير متجاوبة أو هناك مشكلة في الاتصال بخوادم جوجل.";
+        }
+        throw new Error(finalError);
       }
     }
-    return intersections;
+
+    return reply;
   };
 
   // AI study function representing the core user requirement: "دراسة الدالة بالذكاء الاصطناعي مع حلول وتفاصيل"
@@ -434,23 +596,8 @@ export default function MathFunctionSection({
 5. **المناقشة البيانية f(x) = m:** شرح خلاصة إشارة وعدد الحلول.
 أجب بتنظيم مثالي ورائع، مع الحفاظ على سرعة واختصار بيداغوجي ذكي لتحفيز التلميذ!`;
 
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: prompt,
-          keyRotationMode,
-          selectedKeyIndex
-        }),
-      });
-      const data = await response.json();
-      if (data.reply) {
-        setAiStudyResult(data.reply);
-      } else if (data.error) {
-        setAiStudyResult(`عذراً يا بطل، واجهت مشكلة: ${data.error}`);
-      } else {
-        setAiStudyResult("تعذر الحصول على دراسة تفصيلية من الأستاذ دالي في هذه اللحظة.");
-      }
+      const reply = await callGeminiAPI(prompt);
+      setAiStudyResult(reply);
     } catch (error: any) {
       console.error(error);
       const errMsg = error?.message || String(error);
@@ -485,23 +632,8 @@ f(x) = ${expression} (القيمة x₀ = ${tangentPoint})
 أجب باختصار وتركيز تعليمي مبهج بالدارجة الجزائري الراقي الميسر، وصلي على محمد:
 "${promptTopic}"`;
 
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: fullPrompt,
-          keyRotationMode,
-          selectedKeyIndex
-        }),
-      });
-      const data = await response.json();
-      if (data.reply) {
-        setSystemAnswer(data.reply);
-      } else if (data.error) {
-        setSystemAnswer(`عذراً، حدث خطأ: ${data.error}`);
-      } else {
-        setSystemAnswer("عذراً بني، لم أستطع صياغة تبرير رياضي في هذه اللحظة. صلي على محمد وحاول مجدداً!");
-      }
+      const reply = await callGeminiAPI(fullPrompt);
+      setSystemAnswer(reply);
     } catch (error: any) {
       console.error(error);
       const errMsg = error?.message || String(error);
@@ -553,23 +685,8 @@ f(x) = ${expression}
 اختصر ونظم الشرح بفقرات واضحة مبهجة وتبسيط بيداغوجي، وابدأ بالصلاة على رسول الله وصحابته والبسملة.`;
 
     try {
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: prompt,
-          keyRotationMode,
-          selectedKeyIndex
-        }),
-      });
-      const data = await response.json();
-      if (data.reply) {
-        setLimitExplanation(data.reply);
-      } else if (data.error) {
-        setLimitExplanation(`عذراً، حدث خطأ: ${data.error}`);
-      } else {
-        setLimitExplanation("عذراً، تعذر الحصول على شرح النهاية حالياً. صلي على محمد وحاول مجدداً.");
-      }
+      const reply = await callGeminiAPI(prompt);
+      setLimitExplanation(reply);
     } catch (error: any) {
       console.error(error);
       setLimitExplanation(`فشل حساب النهاية: ${error?.message || error}`);
@@ -596,6 +713,51 @@ f(x) = ${expression}
 2. **تفصيل مراحل الحساب:** إعطاء خطوة بخطوة للحساب المشتقة مع قوانين التبسيط والتعويض عن القيمة ${derivPoint}.
 3. **مستقيم المماس:** تبيان معادلة المماس Cf عند هذه النقطة بدقة والربط بين المعامل التوجيهي وقيمة المشتقة.
 4. **تقديم تبسيط ونُصح تربوي:** بخصوص إشارة المشتقة وأهمية كتابتها بطريقة واضحة في البكالوريا مع الصلاة على محمد وعائلته الشريفة.`;
+
+    try {
+      const reply = await callGeminiAPI(prompt);
+      setDerivExplanation(reply);
+    } catch (error: any) {
+      console.error(error);
+      setDerivExplanation(`فشل شرح المشتقة: ${error?.message || error}`);
+    } finally {
+      setIsExplainingDeriv(false);
+    }
+  };
+
+  // Helper to interactive dialogue with Professor Dali
+  const askDaliDialogue = async (predefQuery?: string) => {
+    const queryToUse = predefQuery || dialogueQuery;
+    if (!queryToUse.trim()) return;
+
+    setIsDialogueLoading(true);
+    setDialogueQuery("");
+    // Add student turn locally
+    const updatedHistory = [...dialogueHistory, { role: "student" as const, text: queryToUse }];
+    setDialogueHistory(updatedHistory);
+
+    const formattedHistory = updatedHistory.map(turn => ({
+      role: turn.role === "student" ? "user" : "assistant",
+      text: turn.text
+    }));
+
+    const prompt = `أنت هو الأستاذ دالي نجيب لولاية الجزائر، معلم مبسط ومحبوب في الرياضيات لطلاب البكالوريا ومطور ذكاء اصطناعي.
+نحن بصدد دراسة الدالة: f(x) = ${expression}
+
+التلميذ يشارك ويتحاور معك ثنائياً ويسألك الآن لكي تفهمه خطوة بخطوة: "${queryToUse}"
+جاوبه بأسلوبك البيداغوجي المبهج، والأخوي والوقور لتسهيل استيعابه وجبر خاطره، مستعملاً كلمات تشجيعية دافئة، وصلي على شفيعنا محمد في البداية والنهاية.`;
+
+    try {
+      const reply = await callGeminiAPI(prompt, formattedHistory);
+      setDialogueHistory(prev => [...prev, { role: "dali" as const, text: reply }]);
+    } catch (error: any) {
+      console.error(error);
+      const errMsg = error?.message || String(error);
+      setDialogueHistory(prev => [...prev, { role: "dali" as const, text: `لقد حدث خطأ في التواصل بني: ${errMsg}` }]);
+    } finally {
+      setIsDialogueLoading(false);
+    }
+  };� تبسيط ونُصح تربوي:** بخصوص إشارة المشتقة وأهمية كتابتها بطريقة واضحة في البكالوريا مع الصلاة على محمد وعائلته الشريفة.`;
 
     try {
       const response = await fetch("/api/gemini/chat", {
