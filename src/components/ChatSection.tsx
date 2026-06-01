@@ -150,11 +150,10 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
       }
     } catch (err: any) {
       console.error(err);
-      // Let's add a clear user-facing error message from Professor Dali
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: "assistant",
-        text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${err.message}". أعد المحاولة وسأوضح لك كل شيء. صلي على محمد ووحد الله.`,
+        text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${err.message}". أعد المحاولة وسأوضح لك كل شيء بالتفصيل. صلي على محمد ووحد الله.`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -168,9 +167,9 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
   };
 
   return (
-    <div className="flex flex-col h-[650px] bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-[650px] bg-[#131b2e] rounded-1-none rounded-2xl border border-slate-800 shadow-lg overflow-hidden">
       {/* Top Profile Header */}
-      <div className="bg-slate-50 px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
+      <div className="bg-slate-900/50 px-5 py-3.5 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-4">
           <div className="relative">
             <img 
@@ -179,20 +178,19 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
               alt="الأستاذ دالي" 
               className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500 shadow-md shadow-emerald-500/15"
               onError={(e) => {
-                // Fallback avatar
                 e.currentTarget.src = "https://img.icons8.com/color/150/user-male-circle.png";
               }}
             />
             <span className="absolute bottom-0 right-0 text-lg leading-none" title="الجزائر 🇩🇿">🇩🇿</span>
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-base md:text-lg flex items-center gap-2">
+            <h3 className="font-bold text-white text-base md:text-lg flex items-center gap-2">
               الأستاذ دالي نجيب 
-              <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-0.5 rounded-full border border-emerald-100 font-semibold">
+              <span className="bg-emerald-950/80 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-900/30 font-semibold">
                 الرياضيات والذكاء الاصطناعي
               </span>
             </h3>
-            <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               متصل الآن لتوجيهك ودراسة الدوال
             </p>
@@ -201,7 +199,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
         
         <button 
           onClick={handleClearChat}
-          className="text-slate-600 hover:text-red-600 hover:bg-slate-100 p-2 rounded-lg transition-all duration-200 text-xs flex items-center gap-1.5"
+          className="text-slate-400 hover:text-red-400 hover:bg-slate-850 p-2 rounded-lg transition-all duration-200 text-xs flex items-center gap-1.5"
           title="مسح المحادثة وحبذا لو صليت على النبي قبل ذلك!"
         >
           <RefreshCw className="w-4 h-4" />
@@ -210,7 +208,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
       </div>
 
       {/* Main Chat Display Canvas */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-white shrink-0">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-[#0e1424] shrink-0 font-sans">
         
         {messages.length === 0 ? (
           /* Large Beautiful Welcoming Card with Professor Dali layout */
@@ -220,13 +218,13 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
             </div>
             
             <div className="space-y-3">
-              <h2 className="text-xl md:text-2xl font-black text-slate-800">مرحباً بكل بطل وبطلة في مادة الرياضيات! 🇩🇿 </h2>
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 shadow-inner text-slate-700 text-sm md:text-base leading-relaxed">
+              <h2 className="text-xl md:text-2xl font-black text-white">مرحباً بكل بطل وبطلة في مادة الرياضيات! 🇩🇿 </h2>
+              <div className="bg-slate-900/80 p-5 rounded-xl border border-slate-800/80 shadow-inner text-slate-100 text-sm md:text-base leading-relaxed font-semibold">
                 {welcomeMessage || "مرحبا بيك خويا اختي انا الاستاذ دالي استاذ مادة رياضيات و مبرمج بذكاء اصطناعي كيفاش نقدر نساعدك؟"}
               </div>
             </div>
 
-            {/* Suggeted Prompt Pills */}
+            {/* Suggested Prompt Pills */}
             <div className="space-y-3">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block text-right pr-2">
                 🎯 أسئلة شائعة لبداية الشرح:
@@ -236,7 +234,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
                   <button
                     key={idx}
                     onClick={() => handleSendMessage(prompt)}
-                    className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-800 p-3 rounded-xl border border-slate-200 text-right transition-all duration-200 leading-relaxed shadow-sm hover:border-emerald-500/10 active:scale-98"
+                    className="text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-350 hover:text-white p-3 rounded-xl border border-slate-805 text-right transition-all duration-200 leading-relaxed shadow-sm active:scale-98"
                   >
                     {prompt}
                   </button>
@@ -278,13 +276,13 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
                   <div
                     className={`p-3.5 rounded-2xl shadow-sm text-sm md:text-base leading-relaxed ${
                       msg.sender === "user"
-                        ? "bg-slate-100 text-slate-800 border border-slate-200 rounded-tr-none text-right"
+                        ? "bg-slate-800 text-white border border-slate-700/70 rounded-tr-none text-right"
                         : "bg-emerald-600 text-white rounded-tl-none text-right whitespace-pre-line shadow-sm"
                     }`}
                   >
                     {/* Embedded image message if present */}
                     {msg.imageUrl && (
-                      <div className="mb-3 rounded-lg overflow-hidden border border-slate-200 max-h-48">
+                      <div className="mb-3 rounded-lg overflow-hidden border border-slate-700 max-h-48">
                         <img 
                           referrerPolicy="no-referrer"
                           src={msg.imageUrl} 
@@ -304,7 +302,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
 
                 {/* User Avatar */}
                 {msg.sender === "user" && (
-                  <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm">
+                  <div className="w-9 h-9 rounded-full bg-slate-850 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs shrink-0 select-none">
                     طالب
                   </div>
                 )}
@@ -320,7 +318,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
                   alt="الأستاذ دالي" 
                   className="w-9 h-9 rounded-full object-cover border border-emerald-500"
                 />
-                <div className="bg-slate-100 text-slate-600 p-4 rounded-2xl rounded-tl-none border border-slate-200 inline-flex items-center gap-2.5 text-sm">
+                <div className="bg-slate-800 text-slate-200 p-4 rounded-2xl rounded-tl-none border border-slate-700/60 inline-flex items-center gap-2.5 text-sm/relaxed">
                   <div className="flex gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
@@ -336,17 +334,17 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
       </div>
 
       {/* Input Message formulation zone */}
-      <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+      <div className="p-4 bg-[#111827]/80 border-t border-slate-800 space-y-3">
         {/* Attachment Image Preview bar */}
         {imagePreviewUrl && (
-          <div className="flex items-center justify-between bg-white px-3.5 py-2 rounded-xl border border-slate-200 animate-fade-in animate-pulse">
+          <div className="flex items-center justify-between bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 animate-fade-in animate-pulse">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded overflow-hidden border border-slate-200 bg-black">
+              <div className="w-10 h-10 rounded overflow-hidden border border-slate-800 bg-black">
                 <img referrerPolicy="no-referrer" src={imagePreviewUrl} alt="صورة التمرين" className="object-cover w-full h-full" />
               </div>
               <div className="text-right">
-                <span className="text-xs text-emerald-600 font-bold block">جاهزة للتحليل مع الأستاذ 📸</span>
-                <span className="text-[10px] text-slate-500">تنبيه: سيقوم الأستاذ بقراءة نص التمرين وحله بالتفصيل.</span>
+                <span className="text-xs text-emerald-400 font-bold block">جاهزة للتحليل مع الأستاذ 📸</span>
+                <span className="text-[10px] text-slate-400">تنبيه: سيقوم الأستاذ بقراءة نص التمرين وحله بالتفصيل.</span>
               </div>
             </div>
             <button 
@@ -355,7 +353,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
                 setSelectedImageMime(null);
                 setImagePreviewUrl(null);
               }}
-              className="text-slate-400 hover:text-red-500 p-1 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-xs font-semibold"
+              className="text-slate-400 hover:text-red-400 p-1 bg-slate-800 hover:bg-slate-750 rounded-lg transition-colors text-xs font-semibold"
             >
               إلغاء الصورة
             </button>
@@ -382,10 +380,10 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
           <button
             type="button"
             onClick={triggerImageSelect}
-            className="bg-white hover:bg-slate-100 text-slate-600 p-3 rounded-xl transition-all duration-200 border border-slate-200 hover:border-emerald-500/25 shrink-0"
+            className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white p-3 rounded-xl transition-all duration-200 border border-slate-800 hover:border-emerald-500/25 shrink-0"
             title="إرفاق صورة التمرين الرياضي للأستاذ"
           >
-            <ImageIcon className="w-5 h-5 text-emerald-600" />
+            <ImageIcon className="w-5 h-5 text-emerald-500" />
           </button>
 
           {/* Text input */}
@@ -394,7 +392,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
             value={inputMsg}
             onChange={(e) => setInputMsg(e.target.value)}
             placeholder="اسأل الأستاذ دالي عن أي دالة، مبرهنة، أو تمرين..."
-            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all duration-200 text-right pr-4"
+            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-200 text-right pr-4"
             disabled={isSending}
           />
 

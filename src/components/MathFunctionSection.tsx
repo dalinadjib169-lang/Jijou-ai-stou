@@ -493,7 +493,6 @@ f(x) = ${expression}
 
   // Switch to chat tab carrying the question
   const sendQuestionToChatTab = () => {
-    // We can copy to keyboard or give a friendly hint
     const textToCopy = `أستاذ دالي، بخصوص الدالة f(x) = ${expression}، لدي سؤال: ${studentQuestion || "كيف أقوم بتمثيل جدول التغيرات ودراسة نهاياتها بالتفصيل؟"}`;
     navigator.clipboard.writeText(textToCopy);
     alert("✓ تم نسخ السؤال وصيغة الدالة الحالية إلى حافظتك بنجاح! انتقل الآن لعلامة تبويب 'دردشة الأستاذ دالي' والصقه مباشرة لتكمل نقاشك الذكي 💬");
@@ -501,7 +500,6 @@ f(x) = ${expression}
 
   // Generate interactive values for the Variation Table
   const generateVariationTableData = () => {
-    // We compose a sorted division of segments
     const pts = [-Infinity];
     forbiddenValues.forEach(v => pts.push(v));
     criticalPointsList.forEach(pt => {
@@ -518,12 +516,12 @@ f(x) = ${expression}
     <div className="space-y-6 text-right">
       
       {/* Top Banner Alert */}
-      <div className="bg-gradient-to-l from-emerald-500/10 to-teal-500/5 p-4 rounded-xl border border-emerald-500/10 flex items-center justify-between gap-3 flex-wrap">
+      <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-900/40 flex items-center justify-between gap-3 flex-wrap shadow">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
-          <p className="text-xs sm:text-sm font-bold text-slate-700">الراسم التفاعلي المتطور مع جدول التغيرات وبطاقة طرح الأسئلة الذكية 🇩🇿</p>
+          <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+          <p className="text-xs sm:text-sm font-bold text-slate-300">الراسم التفاعلي المتطور مع جدول التغيرات وبطاقة طرح الأسئلة الذكية 🇩🇿</p>
         </div>
-        <div className="text-[11px] bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
+        <div className="text-[11px] bg-emerald-950/70 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-900/50 font-bold">
           ثنائي الأبعاد فوري
         </div>
       </div>
@@ -534,24 +532,24 @@ f(x) = ${expression}
         <div className="lg:col-span-5 space-y-6">
           
           {/* Main function formula card input */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
+          <div className="bg-[#131b2e] p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+            <h3 className="text-white font-black text-base flex items-center gap-2 justify-end">
               تحكم بحدود الدالة f(x)
-              <Activity className="w-5 h-5 text-emerald-600" />
+              <Activity className="w-5 h-5 text-emerald-400" />
             </h3>
             
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">اكتب صيغة الدالة f(x) هنا:</label>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">اكتب صيغة الدالة f(x) هنا:</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-emerald-600 font-serif font-black text-sm">f(x) =</span>
+                  <span className="absolute left-3.5 top-2.5 text-emerald-400 font-serif font-black text-sm">f(x) =</span>
                   <input 
                     ref={inputRef}
                     type="text" 
                     value={expression} 
                     onChange={(e) => setExpression(e.target.value)}
                     placeholder="مثال: (x^2 - 1) / (x - 2)"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl pl-16 pr-4 py-2.5 text-left font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-16 pr-4 py-2.5 text-left font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -581,7 +579,7 @@ f(x) = ${expression}
                   <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border-b border-emerald-700/30">
                     <button 
                       onClick={() => setAiStudyResult(null)}
-                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 px-2 py-0.5 rounded cursor-pointer"
+                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-755 px-2 py-0.5 rounded cursor-pointer"
                     >
                       إغلاق ✕
                     </button>
@@ -609,37 +607,37 @@ f(x) = ${expression}
               )}
 
               {/* Mathematical Shortcut Keyboard Panel */}
-              <div className="bg-slate-50 hover:bg-slate-100/70 p-3 rounded-xl border border-slate-200 space-y-2 transition-colors">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-500 flex items-center gap-1 justify-end">
+              <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 space-y-2 transition-colors">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-400 flex items-center gap-1 justify-end">
                   لوحة إدخال الرموز والدوال الرياضية السريعة
-                  <Keyboard className="w-3.5 h-3.5 text-emerald-500" />
+                  <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
                 </span>
                 
                 <div className="grid grid-cols-5 gap-1.5 font-mono text-xs font-black select-none">
-                  <button onClick={() => insertSymbol("exp")} className="bg-white hover:bg-emerald-50 hover:border-emerald-200 text-emerald-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">eˣ</button>
-                  <button onClick={() => insertSymbol("ln")} className="bg-white hover:bg-emerald-50 hover:border-emerald-200 text-emerald-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">ln(x)</button>
-                  <button onClick={() => insertSymbol("^2")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x²</button>
-                  <button onClick={() => insertSymbol("^3")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x³</button>
-                  <button onClick={() => insertSymbol("sqrt")} className="bg-white hover:bg-emerald-50 text-slate-700 py-2 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">√x</button>
+                  <button onClick={() => insertSymbol("exp")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">eˣ</button>
+                  <button onClick={() => insertSymbol("ln")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">ln(x)</button>
+                  <button onClick={() => insertSymbol("^2")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x²</button>
+                  <button onClick={() => insertSymbol("^3")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x³</button>
+                  <button onClick={() => insertSymbol("sqrt")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">√x</button>
                   
-                  <button onClick={() => insertSymbol("sin")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">sin</button>
-                  <button onClick={() => insertSymbol("cos")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">cos</button>
-                  <button onClick={() => insertSymbol("pi")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">π</button>
-                  <button onClick={() => insertSymbol("/")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">/</button>
-                  <button onClick={() => insertSymbol("*")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">*</button>
+                  <button onClick={() => insertSymbol("sin")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">sin</button>
+                  <button onClick={() => insertSymbol("cos")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">cos</button>
+                  <button onClick={() => insertSymbol("pi")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-sans">π</button>
+                  <button onClick={() => insertSymbol("/")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">/</button>
+                  <button onClick={() => insertSymbol("*")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">*</button>
 
-                  <button onClick={() => insertSymbol("+")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">+</button>
-                  <button onClick={() => insertSymbol("-")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">-</button>
-                  <button onClick={() => insertSymbol("(")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">(</button>
-                  <button onClick={() => insertSymbol(")")} className="bg-white hover:bg-emerald-50 text-slate-700 py-1.5 border border-slate-200 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">)</button>
-                  <button onClick={clearExpression} className="bg-rose-50 hover:bg-rose-100 hover:border-rose-200 text-rose-600 py-1.5 border border-rose-150 rounded-lg shadow-sm transition active:scale-95 cursor-pointer text-[10px] font-bold">مسح C</button>
+                  <button onClick={() => insertSymbol("+")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">+</button>
+                  <button onClick={() => insertSymbol("-")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">-</button>
+                  <button onClick={() => insertSymbol("(")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">(</button>
+                  <button onClick={() => insertSymbol(")")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">)</button>
+                  <button onClick={clearExpression} className="bg-rose-950/40 hover:bg-rose-900 border border-rose-900/50 text-rose-400 py-1.5 rounded-lg shadow-sm transition active:scale-95 cursor-pointer text-[10px] font-bold">مسح C</button>
                 </div>
               </div>
 
               {/* Sliders for auxiliary evaluation */}
               <div className="grid grid-cols-2 gap-3.5">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">نقطة التماس x₀:</label>
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">نقطة التماس x₀:</label>
                   <input 
                     type="range"
                     min="-8"
@@ -647,27 +645,27 @@ f(x) = ${expression}
                     step="0.5"
                     value={tangentPoint}
                     onChange={(e) => setTangentPoint(parseFloat(e.target.value))}
-                    className="w-full accent-amber-500 bg-white rounded-lg h-1.5"
+                    className="w-full accent-emerald-500 bg-slate-800 rounded-lg h-1.5"
                   />
-                  <div className="flex justify-between items-center text-xs text-amber-600 font-mono font-bold mt-1 shadow-sm">
+                  <div className="flex justify-between items-center text-xs text-amber-500 font-mono font-bold mt-1 shadow-sm">
                     <span>{tangentPoint}</span>
                     <span>x₀</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">المقارب المائل y = </label>
+                <div className="bg-[#131b2e] p-3 rounded-xl border border-slate-805 text-emerald-400 text-xs leading-relaxed">
+                  <label className="block text-[11.5px] font-bold text-slate-400 mb-1 text-right">المقارب المائل المقدر y =</label>
                   <input 
                     type="text"
                     value={obliqueAsymptoteExpr}
                     onChange={(e) => setObliqueAsymptoteExpr(e.target.value)}
                     placeholder="مثال: x + 2"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-left font-mono text-emerald-600 text-xs focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-left font-mono text-emerald-400 text-xs focus:outline-none focus:border-emerald-505"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3 flex-wrap gap-2 text-xs font-bold text-slate-600">
+              <div className="flex items-center justify-between border-t border-slate-800 pt-3 flex-wrap gap-2 text-xs font-bold text-slate-405">
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input 
                     type="checkbox"
@@ -675,7 +673,7 @@ f(x) = ${expression}
                     onChange={(e) => setShowTangent(e.target.checked)}
                     className="accent-amber-500 cursor-pointer"
                   />
-                  رسم المماس (Orange)
+                  <span>رسم المماس (Orange)</span>
                 </label>
 
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">

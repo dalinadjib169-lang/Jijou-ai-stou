@@ -39,7 +39,7 @@ const DHIKR_DATA: DhikrItem[] = [
 
 export default function DhikrTicker() {
   const [selectedCategory, setSelectedCategory] = useState<"morning" | "evening" | "sleep" | "general" | "all">("all");
-  const [tickerSpeed, setTickerSpeed] = useState<number>(3); // scrollamount
+  const [tickerSpeed, setTickerSpeed] = useState<number>(3); // speed coefficient
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
   // Filter based on selected tab
@@ -47,57 +47,43 @@ export default function DhikrTicker() {
     ? DHIKR_DATA 
     : DHIKR_DATA.filter(item => item.category === selectedCategory);
 
-  // Joining all text components with space divider
-  const scrollingText = filteredDhikr.map((item, idx) => (
-    <span key={idx} className="inline-flex items-center mx-8 text-slate-800 font-medium">
-      <span className="text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] font-bold ml-2 shadow-sm border border-emerald-100">
-        {item.category === "morning" && "صباح"}
-        {item.category === "evening" && "مساء"}
-        {item.category === "sleep" && "نوم"}
-        {item.category === "general" && "ذكر"}
-      </span>
-      <span className="text-sm md:text-base tracking-wide leading-relaxed font-serif select-none">{item.text}</span>
-      <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 mr-4 shrink-0 animate-pulse" />
-    </span>
-  ));
-
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-right">
+    <div className="bg-[#131b2e] rounded-2xl border border-slate-800/80 shadow-lg p-4 space-y-4 text-right">
       
       {/* Category selector menu */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         
         {/* Speed & Pause control */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPaused(!isPaused)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/40 transition-colors"
             title={isPaused ? "تشغيل الشريط" : "إيقاف مؤقت للشريط"}
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
           </button>
           
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-300 bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-800">
             <span>سرعة الحركة:</span>
             <input 
               type="range"
               min="1"
-              max="6"
+              max="5"
               value={tickerSpeed}
               onChange={(e) => setTickerSpeed(parseInt(e.target.value))}
-              className="w-12 h-1 accent-emerald-600"
+              className="w-12 h-1 accent-emerald-500 cursor-pointer bg-slate-800"
             />
           </div>
         </div>
 
         {/* Categories navigation options */}
-        <div className="flex flex-wrap items-center gap-1.5 select-none text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 select-none text-xs justify-end">
           <button
             onClick={() => setSelectedCategory("all")}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
               selectedCategory === "all"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/15"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
             }`}
           >
             الكل ✨
@@ -106,78 +92,104 @@ export default function DhikrTicker() {
             onClick={() => setSelectedCategory("morning")}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
               selectedCategory === "morning"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/15"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
             }`}
           >
-            <Sunrise className="w-3.5 h-3.5 text-amber-500" />
-            <span>أذكار الصباح</span>
+            <Sunrise className="w-3.5 h-3.5 text-amber-400" />
+            <span>صباح</span>
           </button>
           <button
             onClick={() => setSelectedCategory("evening")}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
               selectedCategory === "evening"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/15"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
             }`}
           >
-            <Sunset className="w-3.5 h-3.5 text-indigo-500" />
-            <span>أذكار المساء</span>
+            <Sunset className="w-3.5 h-3.5 text-indigo-400" />
+            <span>مساء</span>
           </button>
           <button
             onClick={() => setSelectedCategory("sleep")}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
               selectedCategory === "sleep"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/15"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
             }`}
           >
-            <Moon className="w-3.5 h-3.5 text-indigo-900" />
-            <span>أذكار النوم</span>
+            <Moon className="w-3.5 h-3.5 text-indigo-300" />
+            <span>نوم</span>
           </button>
           <button
             onClick={() => setSelectedCategory("general")}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
               selectedCategory === "general"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/15"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-            <span>تسبيح وأدعية</span>
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>تسبيحات</span>
           </button>
         </div>
 
         {/* Title */}
-        <div className="flex items-center gap-1.5 order-first md:order-last">
-          <span className="text-slate-700 font-bold text-xs">شريط الأذكار اليومي للبركة والطمأنينة</span>
+        <div className="flex items-center gap-1.5 order-first md:order-last justify-end">
+          <span className="text-white font-bold text-xs">شريط الأذكار اليومي للبركة والطمأنينة</span>
           <span className="text-[14px]">🕌</span>
         </div>
 
       </div>
 
-      {/* Scrolling Text marquee container */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 overflow-hidden relative shadow-inner">
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
+      {/* Scrolling Text marquee container using native CSS keyframes to support custom speeds and pausings */}
+      <div className="bg-slate-950/70 border border-slate-850 rounded-xl py-3.5 px-4 overflow-hidden relative shadow-inner">
+        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#131b2e] via-[#131b2e]/60 to-transparent z-10 pointer-events-none"></div>
+        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#131b2e] via-[#131b2e]/60 to-transparent z-10 pointer-events-none"></div>
         
-        {/* We use standard marquee but support complete reactive control & hover settings */}
-        <marquee
-          scrollamount={isPaused ? 0 : tickerSpeed}
-          direction="right"
-          className="w-full block"
-          onMouseOver={(e: any) => {
-            if (!isPaused) e.currentTarget.setAttribute("scrollamount", "0");
-          }}
-          onMouseOut={(e: any) => {
-            if (!isPaused) e.currentTarget.setAttribute("scrollamount", tickerSpeed.toString());
-          }}
-        >
-          {scrollingText}
-        </marquee>
+        <style>{`
+          @keyframes marquee-dz {
+            0% { transform: translate3d(50%, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+          }
+          .custom-marquee-scroll {
+            display: flex;
+            width: max-content;
+            animation: marquee-dz var(--marquee-duration, 50s) linear infinite;
+            animation-play-state: var(--marquee-play-state, running);
+          }
+          .custom-marquee-scroll:hover {
+            animation-play-state: paused;
+          }
+        `}</style>
+        
+        <div className="w-full overflow-hidden">
+          <div 
+            className="custom-marquee-scroll flex items-center whitespace-nowrap"
+            style={{
+              "--marquee-duration": `${65 / (tickerSpeed || 3)}s`,
+              "--marquee-play-state": isPaused ? "paused" : "running"
+            } as React.CSSProperties}
+          >
+            <div className="flex items-center gap-6 shrink-0 pl-8">
+              {filteredDhikr.map((item, idx) => (
+                <span key={`ticker-item-${idx}`} className="inline-flex items-center mx-3 text-slate-100 font-medium">
+                  <span className="text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full text-[10px] font-bold ml-2.5 border border-emerald-900/50">
+                    {item.category === "morning" && "صباح"}
+                    {item.category === "evening" && "مساء"}
+                    {item.category === "sleep" && "نوم"}
+                    {item.category === "general" && "ذكر"}
+                  </span>
+                  <span className="text-xs sm:text-sm tracking-wide leading-relaxed font-sans select-none">{item.text}</span>
+                  <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 mr-4 shrink-0 animate-pulse" />
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 font-medium select-none">
+      <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 px-1 font-medium select-none">
         <span>تلميح: مرر مؤشر الماوس فوق أي ذكر لإيقافه وقراءته بتمعّن 🎯</span>
         <span>صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ وَآلِهِ 💖</span>
       </div>
