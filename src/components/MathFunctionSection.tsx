@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play, Keyboard, HelpCircle as QuestionIcon, CornerDownLeft, MessageSquare, Plus, RotateCcw, Loader2 } from "lucide-react";
 
-export default function MathFunctionSection() {
+interface MathFunctionSectionProps {
+  apiKeys?: string[];
+  keyRotationMode?: "sequential" | "manual";
+  selectedKeyIndex?: number;
+}
+
+export default function MathFunctionSection({
+  apiKeys = [],
+  keyRotationMode = "sequential",
+  selectedKeyIndex = -1
+}: MathFunctionSectionProps) {
   const [expression, setExpression] = useState("(x^2 - 1) / (x - 2)");
   const [tangentPoint, setTangentPoint] = useState(3);
   const [parameterM, setParameterM] = useState(4);
@@ -409,22 +419,23 @@ export default function MathFunctionSection() {
     setIsStudyingByAi(true);
     setAiStudyResult(null);
     try {
-      const prompt = `أهلاً بك يا أستاذ دالي. أرجو منك دراسة وتحليل الدالة الرياضية التالية دراسة مفصلة ودقيقة مثل باكلوريا الجزائر:
-صيغة الدالة: f(x) = ${expression}
-
-يرجى إعطاء شرح تفصيلي خطوة بخطوة باللغة العربية وطريقتك الودودة المشجعة الجزائريية (الأستاذ دالي نجيب):
-1. **خطوة 1: النهايات والاتجاه (Limits):** حساب النهايات لـ f(x) عند أطراف مجموعة التعريف، مع توضيح جميع المستقيمات المقاربة (Asymptotes) الأفقية، والعمودية، والمائلة مع معادلاتها الرياضية بدقة (مثال: x = 2، y = x + 2).
-2. **خطوة 2: الدالة المشتقة (Derivative):** حساب الدالة المشتقة f'(x) بالتفصيل، وتحديد إشارتها وجدول التغيرات بوضوح.
-3. **خطوة 3: معادلة المماس (Tangent):** كتابة معادلة المماس للمنحنى Cf عند النقطة ذات الفاصلة x₀ = ${tangentPoint}.
-4. **خطوة 4: مبرهنة القيم المتوسطة (T.V.I):** دراسة وجود حلول المعادلة f(x) = 0 على المجال [${intervalA}, ${intervalB}] بالتطبيق الدقيق للمبرهنة مع الشرح والتبرير.
-5. **خطوة 5: دراسة الوسيط m (Parameter Discussion):** مناقشة بيانية وتفصيلية لعدد وإشارة حلول المعادلة f(x) = m (أو تبعاً لوسيط m إن وُجد في المعادلة الأصلية).
-
-أبهر التلميذ بتنظيم رائع، محفز وبخطوات واضحة جداً تسهل الحفظ والفهم، واطرح في النهاية سؤالاً بريئاً لتقييم فهمه، ولا تنسى العبارة الختامية الرائعة.`;
+      const prompt = `أهلاً بك يا أستاذ دالي. أرجو منك دراسة وتحليل الدالة الرياضية التالية دراسة مركزة ومفصلة لباكلوريا الجزائر f(x) = ${expression}.
+يرجى إعطاء شرح مقسم لخطوات واضحة باللغة العربية بأسلوبك الجزائري الودود المحفز (الأستاذ دالي نجيب):
+1. **النهايات والمستقيمات المقاربة:** بشكل موجز ورياضي دقيق وأطراف مجموعة التعريف.
+2. **المشتقة وجدول التغيرات:** احسب f'(x) واشرح إشارتها والاتجاه.
+3. **المماس:** معادلة المماس عند x₀ = ${tangentPoint}.
+4. **مبرهنة القيم المتوسطة:** للحلول f(x) = 0 على المجال [${intervalA}, ${intervalB}].
+5. **المناقشة البيانية f(x) = m:** شرح خلاصة إشارة وعدد الحلول.
+أجب بتنظيم مثالي ورائع، مع الحفاظ على سرعة واختصار بيداغوجي ذكي لتحفيز التلميذ!`;
 
       const response = await fetch("/api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt }),
+        body: JSON.stringify({ 
+          message: prompt,
+          keyRotationMode,
+          selectedKeyIndex
+        }),
       });
       const data = await response.json();
       if (data.reply) {
@@ -434,9 +445,10 @@ export default function MathFunctionSection() {
       } else {
         setAiStudyResult("تعذر الحصول على دراسة تفصيلية من الأستاذ دالي في هذه اللحظة.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setAiStudyResult("فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي. يرجى التأكد من تشغيل الشبكة ومفتاح API في الإعدادات.");
+      const errMsg = error?.message || String(error);
+      setAiStudyResult(`عذراً، فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي: ${errMsg}. يرجى التحقق من مفتاح API والشبكة.`);
     } finally {
       setIsStudyingByAi(false);
     }
@@ -449,31 +461,32 @@ export default function MathFunctionSection() {
     try {
       let promptTopic = "";
       if (type === "limits") {
-        promptTopic = `احسب واشرح نهايات الدالة f(x) = ${expression} عند أطراف مجال تعريفها بالتفصيل مع مستقيماتها المقاربة.`;
+        promptTopic = `احسب نهايات الدالة f(x) = ${expression} عند أطراف مجال التعريف مع مستقيماتها المقاربة باختصار رياضي ومفهوم.`;
       } else if (type === "critical") {
-        promptTopic = `ابحث عن القيم الحدية للدالة f(x) = ${expression} وحساب المشتقة الأولى f'(x) مع دراسة إشارتها وتغير الدالة.`;
+        promptTopic = `احسب المشتقة f'(x) للدالة f(x) = ${expression} وإشارتها وتغير الدالة باختصار رياضي.`;
       } else if (type === "parity") {
-        promptTopic = `ابحث في شفعية الدالة f(x) = ${expression} وتماثل منحنيها البياني بالنسبة للمحاور أو نقطة المبدأ.`;
+        promptTopic = `شفعية الدالة f(x) = ${expression} وتماثل منحنيها.`;
       } else if (type === "intercepts") {
-        promptTopic = `أوجد نقاط تقاطع المنحنى التابع للدالة f(x) = ${expression} مع محوري الفواصل والتراتيب شرحاً رياضياً.`;
+        promptTopic = `نقاط تقاطع f(x) = ${expression} مع محوري الإحداثيات.`;
       } else if (type === "param") {
-        promptTopic = `اشرح وناقش بيانيا حلول المعادلة f(x) = m للوسيط m الحقيقي بالنسبة للمنحنى f(x) = ${expression}.`;
+        promptTopic = `المناقشة البيانية f(x) = m لـالدالة f(x) = ${expression} بوضوح.`;
       } else {
-        promptTopic = studentQuestion || "اشرح لي كيفية دراسة المنحنى وجدول تغيرات هذه الدالة بالتفصيل.";
+        promptTopic = studentQuestion || "اشرح لي هذه الدالة باختصار رياضي مفيد.";
       }
 
       const fullPrompt = `أنت الأستاذ دالي نجيب لمادة الرياضيات. بخصوص الدالة:
-f(x) = ${expression}
-مجال التعريف: القيم الممنوعة المرصودة هي [${forbiddenValues.join(", ") || "لا توجد"}]
-نقطة التماس x₀ = ${tangentPoint}
-
-أجبني كطالب يسأل بفضول علمي عن هذا الموضوع بأسلوبك الجزائري الودود المبهج والأخوي جداً وصلي على محمد في البداية:
+f(x) = ${expression} (القيمة x₀ = ${tangentPoint})
+أجب باختصار وتركيز تعليمي مبهج بالدارجة الجزائري الراقي الميسر، وصلي على محمد:
 "${promptTopic}"`;
 
       const response = await fetch("/api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: fullPrompt }),
+        body: JSON.stringify({ 
+          message: fullPrompt,
+          keyRotationMode,
+          selectedKeyIndex
+        }),
       });
       const data = await response.json();
       if (data.reply) {
@@ -483,9 +496,10 @@ f(x) = ${expression}
       } else {
         setSystemAnswer("عذراً بني، لم أستطع صياغة تبرير رياضي في هذه اللحظة. صلي على محمد وحاول مجدداً!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setSystemAnswer("فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي. يرجى التحقق من لوحة التحكم ومفتاح API في الإعدادات.");
+      const errMsg = error?.message || String(error);
+      setSystemAnswer(`فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي: ${errMsg}. يرجى التحقق من لوحة الإعدادات وتوفر رصيد المفاتيح.`);
     } finally {
       setIsAskingAi(false);
     }

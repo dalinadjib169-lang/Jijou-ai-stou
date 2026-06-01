@@ -183,7 +183,7 @@ export default function DhikrTicker() {
           <div 
             className={`custom-marquee-scroll flex items-center whitespace-nowrap ${direction}`}
             style={{
-              "--marquee-duration": `${(240 + filteredDhikr.length * 30) / (tickerSpeed * 0.55)}s`,
+              "--marquee-duration": `${(30 + filteredDhikr.length * 1.5) / (tickerSpeed || 1)}s`,
               "--marquee-play-state": isPaused ? "paused" : "running"
             } as React.CSSProperties}
           >

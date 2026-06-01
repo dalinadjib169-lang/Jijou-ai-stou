@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart } from "lucide-react";
+import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import ChatSection from "./components/ChatSection";
@@ -36,6 +36,12 @@ export default function App() {
   const [selectedKeyIndex, setSelectedKeyIndex] = useState<number>(() => {
     const val = localStorage.getItem("dali_selectedKeyIndex");
     return val ? Number(val) : -1;
+  });
+
+  // Dark / Light Theme state representation
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dali_theme");
+    return saved !== "light"; // defaults to dark mode
   });
 
   // PWA standalone installation states
@@ -123,8 +129,78 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col justify-between font-sans selection:bg-emerald-600/30">
+    <div className={`min-h-screen ${isDarkMode ? "bg-[#0b0f19] text-slate-100" : "bg-[#f1f5f9] text-slate-800"} flex flex-col justify-between font-sans selection:bg-emerald-600/30 ${!isDarkMode ? "light-theme-wrapper" : ""}`}>
       
+      {!isDarkMode && (
+        <style>{`
+          .light-theme-wrapper {
+            background-color: #f1f5f9;
+            color: #0f172a;
+          }
+          .light-theme-wrapper header,
+          .light-theme-wrapper nav,
+          .light-theme-wrapper main > div,
+          .light-theme-wrapper .bg-\[\#131b2e\],
+          .light-theme-wrapper .bg-\[\#101726\],
+          .light-theme-wrapper .bg-slate-900,
+          .light-theme-wrapper .bg-slate-950,
+          .light-theme-wrapper .bg-slate-950\/70,
+          .light-theme-wrapper .bg-slate-950\/45,
+          .light-theme-wrapper .bg-\[\#111827\],
+          .light-theme-wrapper .bg-\[\#1a2436\],
+          .light-theme-wrapper .bg-slate-900\/50,
+          .light-theme-wrapper .bg-slate-900\/60,
+          .light-theme-wrapper .bg-slate-950\/50,
+          .light-theme-wrapper .bg-slate-950\/80 {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            border-color: #cbd5e1 !important;
+          }
+          .light-theme-wrapper h1,
+          .light-theme-wrapper h2,
+          .light-theme-wrapper h3,
+          .light-theme-wrapper .text-white,
+          .light-theme-wrapper .text-slate-100,
+          .light-theme-wrapper .text-slate-200,
+          .light-theme-wrapper .text-slate-300,
+          .light-theme-wrapper .text-slate-350,
+          .light-theme-wrapper .text-slate-450,
+          .light-theme-wrapper .text-slate-400 {
+            color: #1e293b !important;
+          }
+          .light-theme-wrapper p,
+          .light-theme-wrapper .text-slate-400 {
+            color: #475569 !important;
+          }
+          .light-theme-wrapper .text-slate-500 {
+            color: #64748b !important;
+          }
+          .light-theme-wrapper .border-slate-850,
+          .light-theme-wrapper .border-slate-800,
+          .light-theme-wrapper .border-slate-700,
+          .light-theme-wrapper .border-slate-750,
+          .light-theme-wrapper .border-slate-800\/80 {
+            border-color: #e2e8f0 !important;
+          }
+          /* Custom overrides for nice white sections and tables */
+          .light-theme-wrapper .bg-\[\#111827\] {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+          }
+          .light-theme-wrapper .bg-\[\#1a2436\] {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+          }
+          .light-theme-wrapper input,
+          .light-theme-wrapper select,
+          .light-theme-wrapper textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+          }
+        `}</style>
+      )}
+
       {/* Top Standalone Banner to trigger direct Android/Phone direct app installation */}
       {isInstallable && (
         <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-2 px-4 flex items-center justify-between shadow-lg">
@@ -172,6 +248,21 @@ export default function App() {
 
           {/* Standalone Header Action / Install indicator */}
           <div className="flex items-center gap-3">
+            {/* Elegant Light / Dark Mode theme switcher */}
+            <button
+              onClick={() => {
+                const nextDark = !isDarkMode;
+                setIsDarkMode(nextDark);
+                localStorage.setItem("dali_theme", nextDark ? "dark" : "light");
+              }}
+              type="button"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#1e293b] hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 transition-all duration-205 cursor-pointer flex items-center gap-2 text-xs font-bold"
+              title={isDarkMode ? "تفعيل الوضع المضيء" : "تفعيل الوضع المظلم"}
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" /> : <Moon className="w-4 h-4 text-cyan-400" />}
+              <span>{isDarkMode ? "وضع مضيء ☀️" : "وضع مظلم 🌙"}</span>
+            </button>
+
             <div className="bg-[#1e293b] px-3.5 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-xs text-slate-350 font-semibold leading-none">شات تفاعلي ذكي 🇩🇿</span>
@@ -234,7 +325,11 @@ export default function App() {
           )}
 
           {activeTab === "math" && (
-            <MathFunctionSection />
+            <MathFunctionSection 
+              apiKeys={apiKeys}
+              keyRotationMode={keyRotationMode}
+              selectedKeyIndex={selectedKeyIndex}
+            />
           )}
 
           {activeTab === "admin" && (
