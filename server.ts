@@ -15,8 +15,12 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+import fs from "fs";
+
 // Load Firebase configuration
-import firebaseConfig from "./firebase-applet-config.json" with { type: "json" };
+const firebaseConfig = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")
+);
 
 const fbApp = initializeApp(firebaseConfig);
 const firestoreDb = firebaseConfig.firestoreDatabaseId
@@ -158,12 +162,13 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
         // Construct chat content history conforming to contents parameter
         const contents: any[] = [];
 
-        // Map history to Google GenAI structure
+        // Map history to Google GenAI structure with strict alternating role safety
         if (Array.isArray(history)) {
           history.forEach((turn: any) => {
+            const isModel = turn.role === "assistant" || turn.role === "model" || turn.role === "dali";
             contents.push({
-              role: turn.role === "assistant" ? "model" : "user",
-              parts: [{ text: turn.text }]
+              role: isModel ? "model" : "user",
+              parts: [{ text: turn.text || "" }]
             });
           });
         }

@@ -512,6 +512,160 @@ f(x) = ${expression} (القيمة x₀ = ${tangentPoint})
     alert("✓ تم نسخ السؤال وصيغة الدالة الحالية إلى حافظتك بنجاح! انتقل الآن لعلامة تبويب 'دردشة الأستاذ دالي' والصقه مباشرة لتكمل نقاشك الذكي 💬");
   };
 
+  // Dedicated user inputs for custom limits and derivatives with explanation
+  const [limitTarget, setLimitTarget] = useState<string>("+∞");
+  const [customLimitVal, setCustomLimitVal] = useState<string>("2");
+  const [limitExplanation, setLimitExplanation] = useState<string | null>(null);
+  const [isExplainingLimit, setIsExplainingLimit] = useState<boolean>(false);
+
+  const [derivPoint, setDerivPoint] = useState<string>("3");
+  const [derivExplanation, setDerivExplanation] = useState<string | null>(null);
+  const [isExplainingDeriv, setIsExplainingDeriv] = useState<boolean>(false);
+
+  // Dialogue with Professor Dali
+  const [dialogueQuery, setDialogueQuery] = useState<string>("لم أفهم كيف استخدمنا قانون مشتقة حاصل القسمة u/v ؟");
+  const [dialogueHistory, setDialogueHistory] = useState<{ role: "student" | "dali"; text: string }[]>([
+    { role: "dali", text: "أهلاً بك يا بطل! راني هنا لمساعدتك في فهم نهايات دالتك ومشتقاتها خطوة بخطوة بالرياضيات الدقيقة. جرب حساب نهاية أو مشتقة، وإذا ما فهمتش أي خطوة، اطرح سؤالك هنا مباشرة ونجاوبك خوك الأستاذ دالي بكل سرور وصلي على رسول الله!" }
+  ]);
+  const [isDialogueLoading, setIsDialogueLoading] = useState<boolean>(false);
+
+  // Helper to trigger AI for limit explanation
+  const explainLimitWithAI = async () => {
+    setIsExplainingLimit(true);
+    setLimitExplanation(null);
+    const target = limitTarget === "custom" ? customLimitVal : limitTarget;
+    
+    const prompt = `أهلاً يا أستاذ دالي. أرجو منك حساب وشرح تفصيلي لنهاية خطوة بخطوة مبرهنة بقوانين للـ دالة:
+f(x) = ${expression}
+عند القيمة أو النهاية المستهدفة: x ← ${target}
+
+الرجاء الإجابة كمعلم جزائري ودود ومحفز (الأستاذ دالي نجيب):
+1. **التعويض الأولي:** وضح ما يحدث عند التعويض الأولي وكيفية تحديد ما إذا كانت حالة عدم تعيين (I.F. / Forme indéterminée) أم لا.
+2. **شرح الطريقة وإزالة الاختلال بوضوح:** ما هي الطريقة المستعملة لإزالة حالة عدم التعيين (مثال: التحليل، المرافق، الاختزال، أو المشتقة والتأطير)؟ شرح مبسط جداً وبسيط.
+3. **القوانين المستعملة:** اكتب القواعد الرياضية المستعملة (مثال: نهاية حاصل القسمة أو الحدود الأعلى درجة عند المالانهاية لدالة ناطقة).
+4. **التفسير الهندسي/البياني:** هل النتيجة تعني وجود مستقيم مقارب أفقي أو عمودي؟
+اختصر ونظم الشرح بفقرات واضحة مبهجة وتبسيط بيداغوجي، وابدأ بالصلاة على رسول الله وصحابته والبسملة.`;
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: prompt,
+          keyRotationMode,
+          selectedKeyIndex
+        }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        setLimitExplanation(data.reply);
+      } else if (data.error) {
+        setLimitExplanation(`عذراً، حدث خطأ: ${data.error}`);
+      } else {
+        setLimitExplanation("عذراً، تعذر الحصول على شرح النهاية حالياً. صلي على محمد وحاول مجدداً.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      setLimitExplanation(`فشل حساب النهاية: ${error?.message || error}`);
+    } finally {
+      setIsExplainingLimit(false);
+    }
+  };
+
+  // Helper to trigger AI for derivative explanation
+  const explainDerivativeWithAI = async () => {
+    setIsExplainingDeriv(true);
+    setDerivExplanation(null);
+    const x0Val = Number(derivPoint) || 0;
+    const y0Val = evaluateFunc(expression, x0Val);
+    const numericalDeriv = computeDerivative(x0Val);
+
+    const prompt = `مرحباً يا أستاذ دالي، نريد دراسة بالتفصيل الممل وحساب قابلية اشتقاق الدالة f(x) = ${expression} عند النقطة ذات الفاصلة x₀ = ${derivPoint}.
+معلومات مساعدة محسوبة عددياً:
+- قيمة الدالة f(${derivPoint}) = ${isNaN(y0Val) ? "غير معرفة" : y0Val.toFixed(3)}
+- قيمة المشتقة (عددياً) f'(${derivPoint}) = ${isNaN(numericalDeriv) ? "غير قابلة للاشتقاق" : numericalDeriv.toFixed(3)}
+
+الرجاء الشرح كمعلم جزائري خبير ودود للأستاذ دالي نجيب:
+1. **طريقة الحساب النظرية والقانون:** اشرح قانون حساب المشتقة باستخدام نسبة تزايد الدالة (Limit of [f(x) - f(x₀)]/[x - x₀] as x → x₀) أو قواعد الاشتقاق المباشر (مثل حاصل قسمة دالتين u/v أو دالة مركبة).
+2. **تفصيل مراحل الحساب:** إعطاء خطوة بخطوة للحساب المشتقة مع قوانين التبسيط والتعويض عن القيمة ${derivPoint}.
+3. **مستقيم المماس:** تبيان معادلة المماس Cf عند هذه النقطة بدقة والربط بين المعامل التوجيهي وقيمة المشتقة.
+4. **تقديم تبسيط ونُصح تربوي:** بخصوص إشارة المشتقة وأهمية كتابتها بطريقة واضحة في البكالوريا مع الصلاة على محمد وعائلته الشريفة.`;
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: prompt,
+          keyRotationMode,
+          selectedKeyIndex
+        }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        setDerivExplanation(data.reply);
+      } else if (data.error) {
+        setDerivExplanation(`عذراً، حدث خطأ: ${data.error}`);
+      } else {
+        setDerivExplanation("لم أستطع حساب المشتقة حالياً بني، حاول ثانية والصلاة والسلام على رسول الله.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      setDerivExplanation(`فشل شرح المشتقة: ${error?.message || error}`);
+    } finally {
+      setIsExplainingDeriv(false);
+    }
+  };
+
+  // Helper to interactive dialogue with Professor Dali
+  const askDaliDialogue = async (predefQuery?: string) => {
+    const queryToUse = predefQuery || dialogueQuery;
+    if (!queryToUse.trim()) return;
+
+    setIsDialogueLoading(true);
+    setDialogueQuery("");
+    // Add student turn locally
+    const updatedHistory = [...dialogueHistory, { role: "student" as const, text: queryToUse }];
+    setDialogueHistory(updatedHistory);
+
+    const formattedHistory = updatedHistory.map(turn => ({
+      role: turn.role === "student" ? "user" : "assistant",
+      text: turn.text
+    }));
+
+    const prompt = `أنت هو الأستاذ دالي نجيب لولاية الجزائر، معلم مبسط ومحبوب في الرياضيات لطلاب البكالوريا ومطور ذكاء اصطناعي.
+نحن بصدد دراسة الدالة: f(x) = ${expression}
+
+التلميذ يشارك ويتحاور معك ثنائياً ويسألك الآن لكي تفهمه خطوة بخطوة: "${queryToUse}"
+جاوبه بأسلوبك البيداغوجي المبهج، والأخوي والوقور لتسهيل استيعابه وجبر خاطره، مستعملاً كلمات تشجيعية دافئة، وصلي على شفيعنا محمد في البداية والنهاية.`;
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: prompt,
+          history: formattedHistory,
+          keyRotationMode,
+          selectedKeyIndex
+        }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: data.reply }]);
+      } else if (data.error) {
+        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: `لقد حدث خطأ في التواصل بني: ${data.error}` }]);
+      } else {
+        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: "لم أسمعك جيداً بني بسبب انقطاع مؤقت في الشبكة. المرجو إعادة صياغة سؤالك وصلي على رسول الله." }]);
+      }
+    } catch (error) {
+      console.error(error);
+      setDialogueHistory(prev => [...prev, { role: "dali" as const, text: "حدث خطأ غير متوقع بني، تأكد من مفاتيح الـ API المعتمدة والاتصال بالإنترنت!" }]);
+    } finally {
+      setIsDialogueLoading(false);
+    }
+  };
+
   // Generate interactive values for the Variation Table
   const generateVariationTableData = () => {
     const pts = [-Infinity];
@@ -910,6 +1064,266 @@ f(x) = ${expression} (القيمة x₀ = ${tangentPoint})
             <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
               💡 يظهر الرمز <span className="text-rose-500">||</span> خطوط حائطية عمودية دلالة على عدم استمرارية الدالة بسبب وجود قيمة ممنوعة في المقام.
             </p>
+          </div>
+
+          {/* New Comprehensive Limits, Derivatives & Interactive Dialogue Station */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-3xl border border-emerald-500/20 shadow-xl text-right space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/20">منصة البكالوريا المتقدمة</span>
+              <h4 className="text-white font-black text-base flex items-center gap-2 justify-end">
+                محطة تفصيل النهايات والمشتقة مع الأستاذ دالي 🎓🧮
+                <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+              </h4>
+            </div>
+
+            {/* Quick Math Rules Cheat Sheet */}
+            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-3">
+              <span className="text-xs font-black text-amber-400 flex items-center justify-end gap-1">
+                الدستور الذهبي لقوانين نهايات ومشتقات البكالوريا 📜
+                <Info className="w-4 h-4 text-amber-400" />
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-[11px] font-semibold text-slate-300">
+                <div className="bg-[#1e293b]/40 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-bold text-emerald-400">❖ مشتقة حاصل قسمة دالتين (u/v):</p>
+                  <p className="font-mono text-left text-slate-400"> (u/v)' = (u'v - uv') / v²</p>
+                </div>
+                <div className="bg-[#1e293b]/40 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-bold text-emerald-400">❖ مشتقة جداء دالتين (u × v):</p>
+                  <p className="font-mono text-left text-slate-400"> (u × v)' = u'v + uv'</p>
+                </div>
+                <div className="bg-[#1e293b]/40 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-bold text-cyan-400">❖ نهايات ومقارب الأطراف لـ x ← x₀:</p>
+                  <p className="text-slate-400">إذا كانت النهاية غير منتهية (±∞)، فإن x = x₀ مستقيم مقارب عمودي.</p>
+                </div>
+                <div className="bg-[#1e293b]/40 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                  <p className="font-bold text-cyan-400">❖ نهايات المالانهاية لـ x ← ±∞:</p>
+                  <p className="text-slate-400">إذا كانت النهاية منتهية f(x) = L، فإن y = L مستقيم مقارب أفقي.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Box A: Limits study */}
+              <div className="bg-[#131b2e] p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                <div>
+                  <h5 className="font-black text-sm text-slate-100 mb-2">1. حساب وتفسير النهايات ومقاربها 🔮</h5>
+                  <p className="text-slate-400 text-[11px] mb-3 leading-relaxed">
+                    اختر الطرف أو القيمة المستهدفة لإيجاد النهاية وتبيان المستقيم المقارب:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select 
+                        value={limitTarget}
+                        onChange={(e) => setLimitTarget(e.target.value)}
+                        className="bg-slate-900 border border-slate-800 p-2 text-xs rounded-lg text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="+∞">+∞ (اللانهاية الموجبة)</option>
+                        <option value="-∞">-∞ (اللانهاية السالبة)</option>
+                        {forbiddenValues.map(v => (
+                          <option key={`opt-l-${v}`} value={v.toString()}>{v} (قيمة ممنوعة)</option>
+                        ))}
+                        <option value="0">0 (المبدأ)</option>
+                        <option value="custom">قيمة مخصصة أخرى...</option>
+                      </select>
+                      
+                      {limitTarget === "custom" && (
+                        <input 
+                          type="text" 
+                          placeholder="مثال: 1" 
+                          value={customLimitVal}
+                          onChange={(e) => setCustomLimitVal(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 px-2 py-1 text-xs rounded-lg text-white font-mono text-center focus:outline-none"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3">
+                  <button 
+                    onClick={explainLimitWithAI}
+                    disabled={isExplainingLimit}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isExplainingLimit ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isExplainingLimit ? "جاري الشرح البيداغوجي..." : "احسب وفسر النهاية بالخطوات 🔮"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Box B: Derivative and Tangent study */}
+              <div className="bg-[#131b2e] p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                <div>
+                  <h5 className="font-black text-sm text-slate-100 mb-2">2. حساب المشتقة والتقريب الخطي 🎯</h5>
+                  <p className="text-slate-400 text-[11px] mb-3 leading-relaxed">
+                    احسب معامل التوجيه وقابلية الاشتقاق عند نقطة معينة لإيجاد معادلة المماس بدقة:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 font-serif text-xs">x₀ =</span>
+                      <input 
+                        type="number" 
+                        step="1"
+                        value={derivPoint}
+                        onChange={(e) => setDerivPoint(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 p-2 text-xs rounded-lg text-white font-mono text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        placeholder="أدخل نقطة التماس"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3">
+                  <button 
+                    onClick={explainDerivativeWithAI}
+                    disabled={isExplainingDeriv}
+                    className="w-full bg-gradient-to-l from-indigo-600 to-emerald-600 text-white font-extrabold text-[11px] py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isExplainingDeriv ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isExplainingDeriv ? "جاري حساب المشتقة..." : "اشرح المشتقة والتقريب بالتفصيل 🎯"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Explanations Display Output Area */}
+            {(limitExplanation || derivExplanation) && (
+              <div className="bg-slate-950 p-4 rounded-2xl border border-emerald-500/20 space-y-4">
+                {limitExplanation && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs text-emerald-400 font-bold border-b border-slate-800 pb-1.5">
+                      <span>x → {limitTarget === "custom" ? customLimitVal : limitTarget}</span>
+                      <span>🔮 شرح النهاية بالخطوات والقوانين للأستاذ دالي:</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">
+                      {limitExplanation}
+                    </p>
+                  </div>
+                )}
+
+                {derivExplanation && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800/60">
+                    <div className="flex justify-between items-center text-xs text-emerald-400 font-bold border-b border-slate-800 pb-1.5">
+                      <span>x₀ = {derivPoint}</span>
+                      <span>🎯 شرح حساب المشتقة والتعويض في معادلة المماس:</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">
+                      {derivExplanation}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2 border-t border-slate-800/50">
+                  <button 
+                    onClick={() => {
+                      setLimitExplanation(null);
+                      setDerivExplanation(null);
+                    }}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold cursor-pointer"
+                  >
+                    تنظيف النتائج ودراسة نقطة أخرى ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Section 3: Two-sided/interactive dialogue with Professor Dali */}
+            <div className="bg-[#101726]/80 p-5 rounded-2xl border border-emerald-500/10 space-y-4">
+              <h5 className="font-black text-sm text-slate-100 flex items-center justify-end gap-1.5">
+                حوار مزدوج ومباشر مع الأستاذ دالي لتوضيح الخطوات 💬🤝
+                <MessageSquare className="w-4 h-4 text-emerald-400 animate-pulse" />
+              </h5>
+              
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                إذا لم تفهم خطوة أو قانون نهاية ومشتقة، ادخل سؤالك هنا وسيقوم الأستاذ دالي بتبسيطها لك فوراً بالدارجة الودودة والروح الطيبة المعمرة:
+              </p>
+
+              {/* Chat thread style dialogue */}
+              <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 max-h-56 overflow-y-auto space-y-3 shadow-inner">
+                {dialogueHistory.map((turn, tIdx) => (
+                  <div 
+                    key={`turn-${tIdx}`}
+                    className={`flex flex-col ${turn.role === "student" ? "items-start text-left" : "items-end text-right"}`}
+                  >
+                    <span className={`text-[9px] font-bold ${turn.role === "student" ? "text-emerald-400" : "text-amber-400"} mb-0.5`}>
+                      {turn.role === "student" ? "التلميذ 🙋‍♂️" : "الأستاذ دالي نجيب 🎓"}
+                    </span>
+                    <div className={`p-2.5 rounded-xl text-xs leading-relaxed max-w-[85%] font-medium ${
+                      turn.role === "student" 
+                        ? "bg-emerald-950/40 text-slate-100 rounded-tl-none border border-emerald-900/40" 
+                        : "bg-[#111827] text-slate-200 rounded-tr-none border border-slate-800"
+                    }`}>
+                      {turn.text}
+                    </div>
+                  </div>
+                ))}
+
+                {isDialogueLoading && (
+                  <div className="flex flex-col items-end text-right">
+                    <span className="text-[9px] font-bold text-amber-500 animate-pulse">شاش الأستاذ يجتهد لك... 🧠✍️</span>
+                    <div className="bg-slate-900/60 p-2.5 rounded-xl text-xs text-slate-400 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>صبر جزيل، الأستاذ دالي يدون التبسيط في كراسك الآن...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Suggestions row for one-click action */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none flex-wrap justify-end">
+                <span className="text-[10px] text-slate-400 font-bold ml-1">اقتراحات سريعة الأسئلة:</span>
+                <button 
+                  onClick={() => askDaliDialogue("كيف أزلنا حالة عدم التعيين؟ هل توجد قوانين ذهبية ثابتة؟")}
+                  className="bg-slate-900 hover:bg-slate-850 p-1.5 py-1 text-[10px] text-emerald-400 font-bold rounded-md border border-slate-800 cursor-pointer"
+                >
+                  كيف أزلنا حالة عدم التعيين؟ 💡
+                </button>
+                <button 
+                  onClick={() => askDaliDialogue("لم أفهم قانون مشتقة قسمة دالتين u/v في المقام، بسطها أكثر")}
+                  className="bg-slate-900 hover:bg-slate-850 p-1.5 py-1 text-[10px] text-emerald-400 font-bold rounded-md border border-slate-800 cursor-pointer"
+                >
+                  تبسيط مشتقة u/v 🧮
+                </button>
+                <button 
+                  onClick={() => askDaliDialogue("ماذا يعني هندسياً أن المشتقة تنعدم عند قيم الذروة وكيف يتغير اتجاه الدالة؟")}
+                  className="bg-slate-900 hover:bg-slate-850 p-1.5 py-1 text-[10px] text-emerald-400 font-bold rounded-md border border-slate-800 cursor-pointer"
+                >
+                  معنى انعدام المشتقة هندسياً 📈
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => askDaliDialogue()}
+                  disabled={isDialogueLoading || !dialogueQuery.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                >
+                  <span>أرسل للأستاذ</span>
+                  <CornerDownLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <input 
+                  type="text"
+                  value={dialogueQuery}
+                  onChange={(e) => setDialogueQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && dialogueQuery.trim()) {
+                      askDaliDialogue();
+                    }
+                  }}
+                  placeholder="اكتب كيف لم تفهم الخطوة ليقوم الأستاذ بتبسيطها مجدداً..."
+                  className="w-full bg-slate-950 border border-slate-800 p-2.5 text-xs rounded-xl text-white font-medium text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Intermediate Value Theorem widget */}
