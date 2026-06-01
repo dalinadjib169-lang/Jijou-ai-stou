@@ -60,13 +60,16 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
     }
   };
 
-  // Base64 Reader & Compressor for 100% reliable local image updates
+  // Double-safe direct Cloudinary upload with zero-friction local base64 fallback
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadLoading(true);
-    try {
+
+    // Helper to perform optimized local compression if Cloudinary upload fails or is not ready
+    const runLocalCompressFallback = (errorDetails: string) => {
+      console.warn("Cloudinary upload failed, triggering native high-speed fallback...", errorDetails);
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -77,7 +80,6 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
           canvas.height = SIZE;
           const ctx = canvas.getContext("2d");
           if (ctx) {
-            // Draw cropped center square
             const minSide = Math.min(img.width, img.height);
             const sx = (img.width - minSide) / 2;
             const sy = (img.height - minSide) / 2;
@@ -86,29 +88,58 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
             const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
             setProfileImage(dataUrl);
 
-            // Auto-save uploaded image immediately in local storage so they see visual transition instantly!
             localStorage.setItem("dali_profileImageUrl", dataUrl);
             onSettingsUpdated(dataUrl, welcomeMsg, keysList);
             
             setUploadLoading(false);
-            alert("✓ تم تحديث وضغط صورتك الشخصية بنجاح فائقة ومعاينتها فورياً في المنصة!");
+            alert(`✓ تذكير: تعذر الرفع المباشر لـ Cloudinary لمشكلة فنية: (${errorDetails}).\n\nولكن تم ضغط كود الصورة فورياً وتحديثها محلياً وبالمزمنة السحابية بنجاح واحتفظنا بها في المنصة برابط مباشر سريع جداً وخفيف! 🇩🇿`);
           } else {
-            throw new Error("Unable to get canvas context");
+            setUploadLoading(false);
+            alert("عذراً، لم نتمكن من تهيئة مساحة معالجة الصورة محلياً.");
           }
         };
         img.onerror = () => {
-          throw new Error("Failed to load image");
+          setUploadLoading(false);
+          alert("عذراً، فشل تحميل ملف الصورة.");
         };
         img.src = event.target?.result as string;
       };
       reader.onerror = () => {
-        throw new Error("Failed to read file");
+        setUploadLoading(false);
+        alert("عذراً، فشل قراءة الملف.");
       };
       reader.readAsDataURL(file);
+    };
+
+    try {
+      // 1. Attempt Cloudinary direct upload first to the user's specific cloud
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "ml_default"); // Standard unsigned upload preset
+      
+      const res = await fetch("https://api.cloudinary.com/v1_1/doaxziqm7/image/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        const uploadedUrl = resData.secure_url;
+        if (uploadedUrl) {
+          setProfileImage(uploadedUrl);
+          localStorage.setItem("dali_profileImageUrl", uploadedUrl);
+          onSettingsUpdated(uploadedUrl, welcomeMsg, keysList);
+          setUploadLoading(false);
+          alert("✓ تم رفع صورتك الشخصية وتحديثها بنجاح فائق على حساب Cloudinary الخاص بك (doaxziqm7) ومزامنتها لجميع الطلاب والمناطق سحابياً! 🇩🇿");
+          return;
+        }
+      }
+      
+      const errorJson = await res.json().catch(() => ({}));
+      const errMsg = errorJson?.error?.message || `كود حالة ${res.status}`;
+      runLocalCompressFallback(errMsg);
     } catch (err: any) {
-      console.error("Local profile processing failed:", err);
-      alert(`عذراً، فشل تحديث الصورة: ${err.message || err}`);
-      setUploadLoading(false);
+      runLocalCompressFallback(err.message || String(err));
     }
   };
 

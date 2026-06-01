@@ -97,13 +97,19 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
     base64Image?: string | null,
     mimeType?: string | null
   ): Promise<string> => {
-    // 1. Load active rotated API keys
-    const keysArray = apiKeys || [];
-    let activeKey = "";
+    // 1. Load active rotated API keys and filter out descriptive labels
+    const rawKeys = apiKeys || [];
+    let cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
     
-    if (keysArray.length > 0) {
-      const randomIndex = Math.floor(Math.random() * keysArray.length);
-      activeKey = keysArray[randomIndex].trim();
+    // In case no keys start with AIzaSy, get whatever keys are there (excluding labels based on lengths/chars)
+    if (cleanKeys.length === 0) {
+      cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
+    }
+
+    let activeKey = "";
+    if (cleanKeys.length > 0) {
+      const randomIndex = Math.floor(Math.random() * cleanKeys.length);
+      activeKey = cleanKeys[randomIndex];
     }
     
     if (!activeKey) {
@@ -112,7 +118,13 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            activeKey = parsed[Math.floor(Math.random() * parsed.length)].trim();
+            let cleanStored = parsed.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
+            if (cleanStored.length === 0) {
+              cleanStored = parsed.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
+            }
+            if (cleanStored.length > 0) {
+              activeKey = cleanStored[Math.floor(Math.random() * cleanStored.length)];
+            }
           }
         }
       } catch (e) {
@@ -161,7 +173,8 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
 في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
-    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    // Use current recommended gemini-3.5-flash model
+    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
     
     const apiResponse = await fetch(apiEndpoint, {
       method: "POST",
@@ -180,11 +193,30 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
     });
 
     if (!apiResponse.ok) {
-      const errBody = await apiResponse.json().catch(() => ({}));
-      throw new Error(errBody?.error?.message || `فشل الاتصال المباشر بخوادم جوجل (كود الخطأ: ${apiResponse.status})`);
+      let errMessage = `فشل الاتصال المباشر بخوادم جوجل (كود الحالة: ${apiResponse.status})`;
+      try {
+        const errBody = await apiResponse.json();
+        if (errBody?.error?.message) {
+          errMessage = `حدث خطأ من خوادم الذكاء الاصطناعي لجوجل: ${errBody.error.message}`;
+        }
+      } catch (e) {
+        try {
+          const textExcerpt = await apiResponse.text();
+          if (textExcerpt) {
+            errMessage = `استجابة غير صالحة من الشبكة: ${textExcerpt.substring(0, 120)}`;
+          }
+        } catch (_) {}
+      }
+      throw new Error(errMessage);
     }
 
-    const resJson = await apiResponse.json();
+    let resJson;
+    try {
+      resJson = await apiResponse.json();
+    } catch (e) {
+      throw new Error("فشل في تحليل الرد الوارد من خوادم الذكاء الاصطناعي بصيغة JSON. يرجى إعادة المحاولة.");
+    }
+
     const resultText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!resultText) {
       throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
@@ -218,6 +250,10 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
     setSelectedImageMime(null);
     setImagePreviewUrl(null);
 
+    let reply = "";
+    let backendSuccess = false;
+
+    // 1. Try querying backend route first (preferred full-stack design)
     try {
       const response = await fetch("/api/gemini/chat", {
         method: "POST",
@@ -233,66 +269,57 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
         })
       });
 
-      const contentType = response.headers.get("content-type");
-      if (!response.ok || (contentType && contentType.includes("text/html"))) {
-        console.warn("Backend unavailable/html error page returned. Falling back directly to client-side Google API...");
-        const reply = await callGeminiDirectlyFromBrowser(
-          textToSend,
-          messages.map(m => ({ role: m.sender, text: m.text })),
-          currentBase64,
-          currentMime
-        );
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          text: reply,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        return;
+      const contentType = response.headers.get("content-type") || "";
+      if (response.ok && !contentType.includes("text/html")) {
+        try {
+          const resData = await response.json();
+          if (resData && resData.reply) {
+            reply = resData.reply;
+            backendSuccess = true;
+          }
+        } catch (jsonErr) {
+          console.warn("Could not parse backend JSON, trying fallback:", jsonErr);
+        }
       }
-
-      const resData = await response.json();
-      if (response.ok) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          text: resData.reply,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      } else {
-        throw new Error(resData.error || "عذراً، فشل في جلب الإجابة.");
-      }
-    } catch (err: any) {
-      console.warn("Retrying with client-side Google Gemini API fallback...", err);
-      try {
-        const reply = await callGeminiDirectlyFromBrowser(
-          textToSend,
-          messages.map(m => ({ role: m.sender, text: m.text })),
-          currentBase64,
-          currentMime
-        );
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          text: reply,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      } catch (fallbackErr: any) {
-        console.error("Direct fallback also failed:", fallbackErr);
-        const errorMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${fallbackErr.message}". أعد المحاولة وسأوضح لك كل شيء بالتفصيل. صلي على محمد ووحد الله.`,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMsg]);
-      }
-    } finally {
-      setIsSending(false);
+    } catch (err) {
+      console.warn("Backend unavailable or timed out, trying fallback:", err);
     }
+
+    // 2. Direct browser-to-Google Gemini API request fallback (needed for static deployment hosts like Vercel)
+    if (!backendSuccess) {
+      console.info("Executing robust direct browser-to-google API fallback...");
+      try {
+        reply = await callGeminiDirectlyFromBrowser(
+          textToSend,
+          messages.map(m => ({ role: m.sender, text: m.text })),
+          currentBase64,
+          currentMime
+        );
+      } catch (fallbackErr: any) {
+        console.error("Direct fallback failed:", fallbackErr);
+        
+        let errorHint = fallbackErr.message || String(fallbackErr);
+        if (errorHint.includes("Unexpected token") || errorHint.includes("is not valid JSON") || errorHint.includes("fetch")) {
+          errorHint = "مفاتيح الـ API المخزنة غير متجاوبة أو انتهت صلاحيتها، أو هناك تعذر في الاتصال المباشر بخوادم جوجل.";
+        }
+
+        reply = `يا بني، حدثت مشكلة تقنية صغيرة معي أثناء جلب الجواب:
+"${errorHint}"
+
+💡 نصيحة الأستاذ دالي:
+1. يرجى التأكد من إضافة مفتاح Gemini API صالح يبدأ بـ "AIzaSy" في لوحة التحكم وحفظ الإعدادات بنجاح.
+2. إذا قمت بنشر التطبيق على Vercel، تذكر إضافة المفاتيح في لوحة التحكم الموجودة داخل التطبيق نفسه (لوحة التحكم -> لوحة المفاتيح) لتأمين تفعيلها في بروفايل جهازك الحالي والطلاب وسيعجبك الشرح جداً!`;
+      }
+    }
+
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      sender: "assistant",
+      text: reply,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+    setIsSending(false);
   };
 
   const handleClearChat = () => {

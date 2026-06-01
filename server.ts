@@ -32,28 +32,61 @@ const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "�
 في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
-// Get rotated APi key from Settings in Firestore
+// Get rotated APi key from Settings in Firestore and dynamic process environment variables
 async function getRotatedApiKey(): Promise<string> {
+  const candidateKeys: string[] = [];
+
+  // 1. Gather any environment variables starting with AIzaSy (covers any custom Vercel or environment names)
+  try {
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value && typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.startsWith("AIzaSy")) {
+          candidateKeys.push(trimmed);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Error scanning process.env keys:", e);
+  }
+
+  // 2. Gather active keys from Firestore rotation settings
   try {
     const docRef = doc(firestoreDb, "settings", "dali");
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
       const keys = data.apiKeys || [];
-      if (Array.isArray(keys) && keys.length > 0) {
-        // Choose a random key from the active list for rotation load-balancing
-        const validKeys = keys.map(k => String(k).trim()).filter(Boolean);
-        if (validKeys.length > 0) {
-          const randomIndex = Math.floor(Math.random() * validKeys.length);
-          console.log(`[Key Rotation] Selected key index ${randomIndex + 1}/${validKeys.length}`);
-          return validKeys[randomIndex];
+      if (Array.isArray(keys)) {
+        // Filter keys starting with AIzaSy or having key characteristics
+        let validKeys = keys.map(k => String(k).trim()).filter(k => k.startsWith("AIzaSy"));
+        if (validKeys.length === 0) {
+          validKeys = keys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_"));
         }
+        validKeys.forEach(k => {
+          if (!candidateKeys.includes(k)) {
+            candidateKeys.push(k);
+          }
+        });
       }
     }
   } catch (error) {
-    console.error("[Key Rotation Error] Using fallback dotenv key:", error);
+    console.warn("[Key Rotation Firestore Error] Fallback env keys used:", error);
   }
-  return process.env.GEMINI_API_KEY || "";
+
+  // 3. Fallback to standard GEMINI_API_KEY if found and valid
+  const defaultKey = (process.env.GEMINI_API_KEY || "").trim();
+  if (defaultKey && defaultKey.startsWith("AIzaSy") && !candidateKeys.includes(defaultKey)) {
+    candidateKeys.push(defaultKey);
+  }
+
+  if (candidateKeys.length > 0) {
+    const randomIndex = Math.floor(Math.random() * candidateKeys.length);
+    console.log(`[Key Rotation] Selected key index ${randomIndex + 1}/${candidateKeys.length}`);
+    return candidateKeys[randomIndex];
+  }
+
+  return "";
 }
 
 // API Health Check

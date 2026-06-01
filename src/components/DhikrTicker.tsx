@@ -41,6 +41,7 @@ export default function DhikrTicker() {
   const [selectedCategory, setSelectedCategory] = useState<"morning" | "evening" | "sleep" | "general" | "all">("all");
   const [tickerSpeed, setTickerSpeed] = useState<number>(1); // default slow and peaceful speed
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [direction, setDirection] = useState<"rtl" | "ltr">("ltr"); // ltr scrolls left-to-right, rtl scrolls right-to-left
 
   // Filter based on selected tab
   const filteredDhikr = selectedCategory === "all" 
@@ -54,13 +55,22 @@ export default function DhikrTicker() {
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         
         {/* Speed & Pause control */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setIsPaused(!isPaused)}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/40 transition-colors cursor-pointer"
             title={isPaused ? "تشغيل الشريط" : "إيقاف مؤقت للشريط"}
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setDirection(prev => prev === "rtl" ? "ltr" : "rtl")}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/40 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
+            title="عكس اتجاه حركة شريط الأذكار"
+          >
+            <span>{direction === "rtl" ? "⬅️ يسار" : "➡️ يمين"}</span>
           </button>
           
           <div className="flex items-center gap-1.5 text-[11px] text-slate-300 bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-800">
@@ -148,14 +158,24 @@ export default function DhikrTicker() {
         <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#131b2e] via-[#131b2e]/60 to-transparent z-10 pointer-events-none"></div>
         
         <style>{`
-          @keyframes marquee-dz {
+          @keyframes marquee-rtl {
+            0% { transform: translate3d(0%, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+          }
+          @keyframes marquee-ltr {
             0% { transform: translate3d(-50%, 0, 0); }
             100% { transform: translate3d(0%, 0, 0); }
           }
           .custom-marquee-scroll {
             display: flex;
             width: max-content;
-            animation: marquee-dz var(--marquee-duration, 160s) linear infinite;
+          }
+          .custom-marquee-scroll.rtl {
+            animation: marquee-rtl var(--marquee-duration, 225s) linear infinite;
+            animation-play-state: var(--marquee-play-state, running);
+          }
+          .custom-marquee-scroll.ltr {
+            animation: marquee-ltr var(--marquee-duration, 225s) linear infinite;
             animation-play-state: var(--marquee-play-state, running);
           }
           .custom-marquee-scroll:hover {
@@ -165,9 +185,9 @@ export default function DhikrTicker() {
 
         <div className="w-full overflow-hidden">
           <div 
-            className="custom-marquee-scroll flex items-center whitespace-nowrap"
+            className={`custom-marquee-scroll flex items-center whitespace-nowrap ${direction}`}
             style={{
-              "--marquee-duration": `${180 / (tickerSpeed || 1)}s`,
+              "--marquee-duration": `${(240 + filteredDhikr.length * 30) / (tickerSpeed * 0.55)}s`,
               "--marquee-play-state": isPaused ? "paused" : "running"
             } as React.CSSProperties}
           >
