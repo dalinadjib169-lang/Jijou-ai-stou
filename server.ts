@@ -95,11 +95,30 @@ app.get("/api/health", (req, res) => {
 // Chat completion with Dali AI (incorporating persona and image understanding)
 app.post("/api/gemini/chat", async (req: any, res: any) => {
   try {
-    const { message, history = [], base64Image, mimeType } = req.body;
+    const { message, history = [], base64Image, mimeType, keyRotationMode, selectedKeyIndex } = req.body;
 
     if (!message && !base64Image) {
       return res.status(400).json({ error: "Message or base64 image is required" });
     }
+
+    // Try reading active rotation config from Firestore settings/dali document in real-time
+    let docMode = "sequential";
+    let docIndex = -1;
+    try {
+      const docRef = doc(firestoreDb, "settings", "dali");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const d = docSnap.data();
+        if (d.keyRotationMode) docMode = d.keyRotationMode;
+        if (typeof d.selectedKeyIndex === "number") docIndex = d.selectedKeyIndex;
+      }
+    } catch (e) {
+      console.warn("Could not read dynamic mode options from Firestore:", e);
+    }
+
+    // Prioritize request body parameters passed in real-time from client state
+    const mode = keyRotationMode !== undefined ? keyRotationMode : docMode;
+    const selectedIdx = selectedKeyIndex !== undefined ? Number(selectedKeyIndex) : docIndex;
 
     const allKeys = await getRotatedApiKeys();
     if (allKeys.length === 0) {
@@ -108,15 +127,23 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
       });
     }
 
-    // Shuffle keys for uniform hits distribution
-    const shuffledKeys = [...allKeys].sort(() => Math.random() - 0.5);
+    let keysToTry: string[] = [];
+    if (mode === "manual" && selectedIdx >= 0 && selectedIdx < allKeys.length) {
+      keysToTry = [allKeys[selectedIdx]];
+      console.log(`[Server Key Active Select] Manual index active. Using key ${selectedIdx + 1} exclusively: ${keysToTry[0].substring(0, 10)}...`);
+    } else {
+      // Sequential Ordered Automatic Rotation: try keys in exact sequence list order
+      keysToTry = [...allKeys];
+      console.log(`[Server Key Active Select] Sequential Auto Active. Trying ${keysToTry.length} keys in list order.`);
+    }
+
     let lastError: any = null;
     let replyText = "";
 
-    // Loop through keys and try them in randomized sequence
-    for (let i = 0; i < shuffledKeys.length; i++) {
-      const activeKey = shuffledKeys[i];
-      console.log(`[Server Key Rotation] Attempting key ${i + 1}/${shuffledKeys.length}: ${activeKey.substring(0, 10)}...`);
+    // Loop through keys and try them in sequence
+    for (let i = 0; i < keysToTry.length; i++) {
+      const activeKey = keysToTry[i];
+      console.log(`[Server Key Rotation] Attempting key ${i + 1}/${keysToTry.length}: ${activeKey.substring(0, 10)}...`);
 
       try {
         const ai = new GoogleGenAI({
@@ -183,7 +210,7 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
 
       } catch (err: any) {
         lastError = err;
-        console.warn(`[Server Key Rotation] Key ${i + 1}/${shuffledKeys.length} failed with error: "${err?.message || err}". Trying next key in sequence...`);
+        console.warn(`[Server Key Rotation] Key ${i + 1}/${keysToTry.length} failed with error: "${err?.message || err}". Trying next key in sequence...`);
         // Continue to check the next key in the loop
         continue;
       }

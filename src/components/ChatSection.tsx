@@ -8,9 +8,17 @@ interface ChatSectionProps {
   welcomeMessage: string;
   profileImageUrl: string;
   apiKeys?: string[];
+  keyRotationMode?: "sequential" | "manual";
+  selectedKeyIndex?: number;
 }
 
-export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }: ChatSectionProps) {
+export default function ChatSection({ 
+  welcomeMessage, 
+  profileImageUrl, 
+  apiKeys,
+  keyRotationMode = "sequential",
+  selectedKeyIndex = -1
+}: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMsg, setInputMsg] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -187,14 +195,22 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
       throw new Error("لا توجد مصفوفة مفاتيح Gemini API مضافة حالياً في لوحة التحكم. يرجى من الأستاذ تسجيل الدخول وإضافة مفتاح لتأمين الخدمة.");
     }
 
-    // Shuffle keys to distribute hits evenly across rotated keys
-    const shuffledKeys = [...cleanKeys].sort(() => Math.random() - 0.5);
+    let keysToTry = cleanKeys;
+    if (keyRotationMode === "manual" && selectedKeyIndex >= 0 && selectedKeyIndex < cleanKeys.length) {
+      keysToTry = [cleanKeys[selectedKeyIndex]];
+      console.log(`[Direct Key Active Select] Manual index active. Using key ${selectedKeyIndex + 1} exclusively in fallback.`);
+    } else {
+      // Sequential Ordered Automatic Rotation: try keys in list order
+      keysToTry = [...cleanKeys];
+      console.log(`[Direct Key Active Select] Sequential Auto Active fallback. Trying ${keysToTry.length} keys in list order.`);
+    }
+
     let lastErrorMsg = "";
 
-    // Loop through shuffled keys and try each one until one succeeds
-    for (let i = 0; i < shuffledKeys.length; i++) {
-      const activeKey = shuffledKeys[i];
-      console.log(`[Direct Key Rotation] Attempting key ${i + 1}/${shuffledKeys.length}: ${activeKey.substring(0, 10)}...`);
+    // Loop through keysToTry check and try each one until one succeeds
+    for (let i = 0; i < keysToTry.length; i++) {
+      const activeKey = keysToTry[i];
+      console.log(`[Direct Key Rotation] Attempting key ${i + 1}/${keysToTry.length}: ${activeKey.substring(0, 10)}...`);
 
       try {
         // 2. Format request body conformant to Google REST format
@@ -284,7 +300,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
 
       } catch (keyErr: any) {
         lastErrorMsg = keyErr.message || String(keyErr);
-        console.warn(`[Direct Key Rotation] Key ${i + 1}/${shuffledKeys.length} failed with error: "${lastErrorMsg}". Trying next key in list...`);
+        console.warn(`[Direct Key Rotation] Key ${i + 1}/${keysToTry.length} failed with error: "${lastErrorMsg}". Trying next key in list...`);
         // Continue to check the next key
         continue;
       }
@@ -334,7 +350,9 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
             text: m.text
           })),
           base64Image: currentBase64,
-          mimeType: currentMime
+          mimeType: currentMime,
+          keyRotationMode,
+          selectedKeyIndex
         })
       });
 

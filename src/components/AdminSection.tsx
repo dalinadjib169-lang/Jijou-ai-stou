@@ -5,13 +5,28 @@ import { signOut, User } from "firebase/auth";
 import { LogIn, LogOut, Save, Key, Plus, Trash2, Image as ImageIcon, CheckCircle, AlertTriangle, HelpCircle, Loader2 } from "lucide-react";
 
 interface AdminSectionProps {
-  onSettingsUpdated: (newImg: string, newMsg: string, newKeys: string[]) => void;
+  onSettingsUpdated: (
+    newImg: string, 
+    newMsg: string, 
+    newKeys: string[], 
+    newMode?: "sequential" | "manual", 
+    newIndex?: number
+  ) => void;
   welcomeMessage: string;
   profileImageUrl: string;
   apiKeys: string[];
+  keyRotationMode?: "sequential" | "manual";
+  selectedKeyIndex?: number;
 }
 
-export default function AdminSection({ onSettingsUpdated, welcomeMessage, profileImageUrl, apiKeys }: AdminSectionProps) {
+export default function AdminSection({ 
+  onSettingsUpdated, 
+  welcomeMessage, 
+  profileImageUrl, 
+  apiKeys,
+  keyRotationMode = "sequential",
+  selectedKeyIndex = -1
+}: AdminSectionProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,6 +37,10 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [keysList, setKeysList] = useState<string[]>([]);
   const [newKey, setNewKey] = useState("");
+
+  // Target Key choice configurations (Sequential vs manual index selection)
+  const [rotationMode, setRotationMode] = useState<"sequential" | "manual">("sequential");
+  const [activeKeyIdx, setActiveKeyIdx] = useState<number>(-1);
   
   const [uploadLoading, setUploadLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -31,7 +50,9 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
     setProfileImage(profileImageUrl);
     setWelcomeMsg(welcomeMessage);
     setKeysList(apiKeys || []);
-  }, [profileImageUrl, welcomeMessage, apiKeys]);
+    setRotationMode(keyRotationMode);
+    setActiveKeyIdx(selectedKeyIndex);
+  }, [profileImageUrl, welcomeMessage, apiKeys, keyRotationMode, selectedKeyIndex]);
 
   useEffect(() => {
     // Listen for authentication changes
@@ -193,9 +214,11 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
     localStorage.setItem("dali_profileImageUrl", targetImg);
     localStorage.setItem("dali_welcomeMessage", targetMsg);
     localStorage.setItem("dali_apiKeys", JSON.stringify(keysList));
+    localStorage.setItem("dali_keyRotationMode", rotationMode);
+    localStorage.setItem("dali_selectedKeyIndex", String(activeKeyIdx));
     
     // 2. Call the app's parent callback to redraw header & chat sidebar profile pictures instantly
-    onSettingsUpdated(targetImg, targetMsg, keysList);
+    onSettingsUpdated(targetImg, targetMsg, keysList, rotationMode, activeKeyIdx);
 
     try {
       if (user) {
@@ -204,7 +227,9 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
         const uploadPayload = {
           profileImageUrl: targetImg,
           welcomeMessage: targetMsg,
-          apiKeys: keysList
+          apiKeys: keysList,
+          keyRotationMode: rotationMode,
+          selectedKeyIndex: activeKeyIdx
         };
 
         const savePromise = setDoc(docRef, uploadPayload);
@@ -449,16 +474,32 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
                     <div className="divide-y divide-slate-800/80 max-h-48 overflow-y-auto space-y-1">
                       {keysList.map((k, index) => {
                         const isInvalid = k.includes("...") || k.includes("…") || k.includes(".");
+                        const isSelected = rotationMode === "manual" && activeKeyIdx === index;
+                        // For auto mode, display first key as primary starting sequence 
+                        const isFirstInAuto = rotationMode === "sequential" && index === 0;
+
                         return (
                           <div 
                             key={index} 
-                            className={`flex items-center justify-between p-2 rounded-lg text-xs font-mono font-bold transition-colors ${
+                            onClick={() => {
+                              if (!isInvalid) {
+                                setActiveKeyIdx(index);
+                                if (rotationMode !== "manual") {
+                                  setRotationMode("manual");
+                                }
+                              }
+                            }}
+                            className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer select-none ${
                               isInvalid 
                                 ? 'bg-red-950/40 border border-red-500/30 text-red-200' 
-                                : 'text-slate-400 hover:bg-slate-900/50'
+                                : isSelected
+                                  ? 'bg-cyan-950/50 border border-cyan-500/60 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.15)]'
+                                  : isFirstInAuto
+                                    ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
+                                    : 'text-slate-400 bg-slate-900/40 border-slate-800/60 hover:bg-slate-900/80 hover:border-slate-705'
                             }`}
                           >
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => removeApiKey(index)}
                                 className="text-red-400 hover:text-red-300 hover:bg-red-950/40 p-1.5 rounded transition-colors cursor-pointer"
@@ -472,18 +513,82 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
                                 </span>
                               )}
                             </div>
-                            <span className={`truncate max-w-xs font-mono text-left block direction-ltr ${isInvalid ? 'line-through text-red-350 opacity-80' : 'text-slate-350'}`}>
-                              {k.length > 20 ? `${k.substring(0, 10)}...${k.substring(k.length - 8)}` : k}
-                            </span>
+
+                            <div className="flex items-center gap-2 max-w-[75%] text-right font-sans">
+                              {isSelected && (
+                                <span className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/25 text-[9px] px-2 py-0.5 rounded-full font-black ml-1.5 shrink-0 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                  نشط حالياً 🎯
+                                </span>
+                              )}
+                              {isFirstInAuto && (
+                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[9px] px-2 py-0.5 rounded-full font-black ml-1.5 shrink-0">
+                                  البادئ بالترتيب ⏱️
+                                </span>
+                              )}
+                              <span className={`truncate font-mono text-left block direction-ltr ${isInvalid ? 'line-through text-red-350 opacity-80' : isSelected ? 'text-cyan-200' : 'text-slate-350'}`}>
+                                {index + 1}. {k.length > 20 ? `${k.substring(0, 10)}...${k.substring(k.length - 8)}` : k}
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
+
+                {/* Visual Settings for Rotation Mode Choice */}
+                {keysList.length > 0 && (
+                  <div className="bg-slate-950/45 p-3 rounded-2xl border border-slate-800/80 space-y-3 mt-3 text-right">
+                    <span className="block text-xs font-black text-emerald-400">⚙️ خيارات تفعيل المفاتيح ونمط العمل:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRotationMode("sequential");
+                          setActiveKeyIdx(-1);
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                          rotationMode === "sequential"
+                            ? "bg-emerald-950/80 text-emerald-400 border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.25)]"
+                            : "bg-slate-900 text-slate-400 border-slate-800/85 hover:border-slate-700"
+                        }`}
+                      >
+                        ⏱️ تدوير تسلسلي تلقائي (مرتّب)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRotationMode("manual");
+                          if (activeKeyIdx < 0 && keysList.length > 0) {
+                            setActiveKeyIdx(0);
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                          rotationMode === "manual"
+                            ? "bg-cyan-950/80 text-cyan-400 border-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.25)]"
+                            : "bg-slate-900 text-slate-400 border-slate-800/85 hover:border-slate-700"
+                        }`}
+                      >
+                        🎯 اختيار يدوي لمفتاح واحد محدد
+                      </button>
+                    </div>
+
+                    {rotationMode === "manual" ? (
+                      <p className="text-[10px] text-cyan-400 font-bold leading-relaxed text-right animate-pulse">
+                        💡 الوضع اليدوي مفعل: يرجى النقر فوق أي مفتاح أعلاه لتحديده باللون الأزرق ليعمل بمفرده حصرياً.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-emerald-400 font-bold leading-relaxed text-right">
+                        💡 الوضع التلقائي المرتب مفعل: يتم استخدام المفاتيح بالتناوب بدءاً من المفتاح رقم (1) وبشكل مرتّب تصاعدي لتفادي الضغط أو نفاذ رصيد التشغيل!
+                      </p>
+                    )}
+                  </div>
+                )}
                 
-                <p className="text-[10px] text-slate-500 leading-relaxed font-bold text-right">
-                  💡 تدوير ذكي: قمنا بتفعيل التبديل التلقائي لكي يتناوب الطلاب على استخدام المفاتيح المدورة وتفادي انتهاء حصة الاستهلاك الآلي للـ API المحددة مجاناً!
+                <p className="text-[10px] text-slate-500 leading-relaxed font-bold text-right pt-1">
+                  💡 تدوير ذكي: عند حفظ الإعدادات، سيتم تطبيق نمط المفاتيح فورياً على خادم الطلاب واللوحة معاً لتخفيف ضغط الاستهلاك للـ API!
                 </p>
               </div>
             </div>

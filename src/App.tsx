@@ -29,6 +29,15 @@ export default function App() {
     }
   });
 
+  // Mode and active index state for manual selection/sequential ordered rotation
+  const [keyRotationMode, setKeyRotationMode] = useState<"sequential" | "manual">(() => {
+    return (localStorage.getItem("dali_keyRotationMode") as "sequential" | "manual") || "sequential";
+  });
+  const [selectedKeyIndex, setSelectedKeyIndex] = useState<number>(() => {
+    const val = localStorage.getItem("dali_selectedKeyIndex");
+    return val ? Number(val) : -1;
+  });
+
   // PWA standalone installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
@@ -50,6 +59,14 @@ export default function App() {
         if (Array.isArray(data.apiKeys)) {
           setApiKeys(data.apiKeys);
           localStorage.setItem("dali_apiKeys", JSON.stringify(data.apiKeys));
+        }
+        if (data.keyRotationMode) {
+          setKeyRotationMode(data.keyRotationMode);
+          localStorage.setItem("dali_keyRotationMode", data.keyRotationMode);
+        }
+        if (typeof data.selectedKeyIndex === "number") {
+          setSelectedKeyIndex(data.selectedKeyIndex);
+          localStorage.setItem("dali_selectedKeyIndex", String(data.selectedKeyIndex));
         }
       }
     }, (error) => {
@@ -81,10 +98,24 @@ export default function App() {
     setIsInstallable(false);
   };
 
-  const handleSettingsUpdated = (newImg: string, newMsg: string, newKeys: string[]) => {
+  const handleSettingsUpdated = (
+    newImg: string, 
+    newMsg: string, 
+    newKeys: string[], 
+    newMode?: "sequential" | "manual", 
+    newIndex?: number
+  ) => {
     setProfileImageUrl(newImg);
     setWelcomeMessage(newMsg);
     setApiKeys(newKeys);
+    if (newMode) {
+      setKeyRotationMode(newMode);
+      localStorage.setItem("dali_keyRotationMode", newMode);
+    }
+    if (newIndex !== undefined) {
+      setSelectedKeyIndex(newIndex);
+      localStorage.setItem("dali_selectedKeyIndex", String(newIndex));
+    }
     // Instant sync verification
     localStorage.setItem("dali_profileImageUrl", newImg);
     localStorage.setItem("dali_welcomeMessage", newMsg);
@@ -197,6 +228,8 @@ export default function App() {
               welcomeMessage={welcomeMessage} 
               profileImageUrl={profileImageUrl} 
               apiKeys={apiKeys}
+              keyRotationMode={keyRotationMode}
+              selectedKeyIndex={selectedKeyIndex}
             />
           )}
 
@@ -209,6 +242,8 @@ export default function App() {
               welcomeMessage={welcomeMessage}
               profileImageUrl={profileImageUrl}
               apiKeys={apiKeys}
+              keyRotationMode={keyRotationMode}
+              selectedKeyIndex={selectedKeyIndex}
               onSettingsUpdated={handleSettingsUpdated}
             />
           )}
