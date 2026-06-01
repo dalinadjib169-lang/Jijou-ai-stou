@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Image as ImageIcon, Sparkles, Loader2, RefreshCw, Smartphone, Check, HelpCircle, ArrowDown } from "lucide-react";
+import { Send, Image as ImageIcon, Sparkles, Loader2, RefreshCw, Smartphone, Check, HelpCircle, ArrowDown, Volume2, VolumeX } from "lucide-react";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { Message } from "../types";
@@ -22,6 +22,62 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
   const [activeQuestion, setActiveQuestion] = useState<{ text: string; options: string[] } | null>(null);
   const [answeredQuestion, setAnsweredQuestion] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  
+  // Voice output state & function for confident master tutoring
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(false);
+
+  const speakText = (text: string, msgId: string) => {
+    if (!("speechSynthesis" in window)) {
+      alert("ميزة نطق الشرح غير مدعومة بالكامل على متصفحك الحالي.");
+      return;
+    }
+
+    try {
+      // Cancel active voice playbacks
+      window.speechSynthesis.cancel();
+
+      if (speakingMsgId === msgId) {
+        setSpeakingMsgId(null);
+        return;
+      }
+
+      // Strip emojis and metadata parameters for elegant vocal reading
+      const speakable = text
+        .replace(/🇩🇿|⭐|🔍|⚡|🛡️|💬|📖/g, "")
+        .replace(/-\s*لا تنسونا من صالح دعائكم/g, "لا تنسونا من صالح دعائكم")
+        .trim();
+
+      const utterance = new SpeechSynthesisUtterance(speakable);
+      utterance.lang = "ar-SA"; // Warm Algerian / Saudi pedagogic dialect accent fallback
+      
+      const voices = window.speechSynthesis.getVoices();
+      // Look for a confident clear male voice or standard Arabic engine
+      const arabicVoice = voices.find(
+        (v) =>
+          v.lang.startsWith("ar") &&
+          (v.name.includes("Male") || v.name.includes("Maged") || v.name.includes("Naeem") || v.name.toLowerCase().includes("male") || !v.name.toLowerCase().includes("female"))
+      );
+      if (arabicVoice) {
+        utterance.voice = arabicVoice;
+      }
+      utterance.rate = 0.92; // Serene steady rate for educational clear comprehension
+      utterance.pitch = 0.98; // Confident male voice level
+
+      utterance.onend = () => {
+        setSpeakingMsgId(null);
+      };
+      utterance.onerror = () => {
+        setSpeakingMsgId(null);
+      };
+
+      setSpeakingMsgId(msgId);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error(e);
+      setSpeakingMsgId(null);
+    }
+  };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -170,12 +226,13 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
           parts: newParts
         });
 
-        const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ مادة الرياضيات القدير والمبرمج بالذكاء الاصطناعي من الجزائر.
-شخصيتك وعقليتك جزائرية مسلمة، طيبة، مشجعة وسلسة وممتعة.
-استخدم عبارات جزائرية وطنية ودينية محببة ووقورة بشكل متوازن وبسيط (مثل: "خويا"، "أختي"، "أهلاً بيك"، "صلي على محمد وجي تتبعني خطوة بخطوة"، "وحد الله وتبع معايا راني هنا لخدمتك"، "هذا سؤال مليح ياسر يعطيك الصحة"، "بارك الله فيك"، "هذا خطأ ما تزيدش تعاودو معليش ذرك تفهمو"، "ربي يبارك فيك الحمد لله كي وضحتلك الفكرة").
-طريقة الشرح: يجب أن يكون الشرح تدريجياً، مبسطاً وممنهجاً ومفهومًا جدًا للطالب الجزائري والعربي.
-في نهاية كل شرح أو إجابة، اطرح سؤالاً اختبارياً قصيراً جداً يتعلق بما شرحته للتو لتقييم فهم الطالب وتشجيعه على المحاولة.
-في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
+        const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ قدير وخبير متأصل في كافة مواد المنهاج التعليمي الجزائري ومواكب لبرامج قطاع التربية الوطنية بالجزائر، مع تخصص دقيق وعميق استثنائي في مادة الرياضيات والذكاء الاصطناعي.
+أسلوبك: أكاديمي تعليمي رصين، مبسط لتسهيل الفهم على التلميذ والمتعلم، بعيد تماماً عن العبارات السوقية أو العامية المبتذلة (مثال: تجنب كلياً عبارات مثل "نسخن الموتور" أو ما شابه)، واستبدلها بعبارات بيداغوجية مشجعة وراقية كوعاء تربوي متين مثل: "دعنا ننشط الذهن بسؤال ذكي ونبسط المفاهيم خطوة بخطوة"، "وحد الله وصلي على رسول الله وتبع معايا راني هنا لخدمتك وتبسيط منهجنا التعليمي".
+قواعد لغوية صارمة وهامة:
+1. التكيف اللغوي التام والذكي: إذا سألك التلميذ بالدارجة الجزائرية، أجب بلهجة دارجة جزائرية بيداغوجية، وقورة ومحببة ومفهومة. وإذا سألك بالفصحى، فأجب بالكامل باللغة العربية الفصحى السليمة الأكاديمية والواضحة جداً.
+2. المنهاج والرياضيات والرموز: ادعم ووجه التلاميذ في جميع المواد التعليمية للمنهاج الجزائري (رياضيات، فيزياء، علوم طبيعية، أدب عربي، تاريخ وجغرافيا، لغات، إلخ)، وخصوصاً الرياضيات. عند كتابة الرموز الرياضية، اكتبها بصيغة واضحة ومفهومة ومطابقة تماماً للمنهاج الجزائري المعتمد. يمنع منعاً باتاً استخدام رمز الدولار ($) أو أي محددات معادلات لاتينية غامضة أو كلمات مثل "times" أو "time" في أسئلتك أو كتابتك، بل اكتب المعادلات والعمليات الحسابية بطريقة وصيغة عربية طبيعية مبسطة ومألوفة للتلميذ الجزائري (مثل: 3 + 3 × 3، أو f(x) = 2x + 1).
+3. نهاية الشرح: في نهاية كل شرح أو إجابة لأي سؤال، اطرح سؤالاً اختبارياً قصيراً جداً مناسباً للمستوى التعليمي لتقييم وتثبيت الفهم من طرف الطالب.
+4. الخاتمة الدائمة: في نهاية كل رسالة تماماً دون أي استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
         // Use current recommended gemini-3.5-flash model
@@ -332,6 +389,14 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
     };
     setMessages(prev => [...prev, assistantMessage]);
     setIsSending(false);
+
+    // Auto-voice description playback if enabled
+    if (isVoiceEnabled) {
+      // Small timeout to allow render completion
+      setTimeout(() => {
+        speakText(reply, assistantMessage.id);
+      }, 50);
+    }
   };
 
   const handleClearChat = () => {
@@ -341,42 +406,70 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
   return (
     <div className="flex flex-col h-[650px] bg-[#131b2e] rounded-1-none rounded-2xl border border-slate-800 shadow-lg overflow-hidden">
       {/* Top Profile Header */}
-      <div className="bg-slate-900/50 px-5 py-3.5 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center gap-4">
+      <div className="bg-slate-900/60 px-4 md:px-5 py-3.5 flex flex-col xs:flex-row items-center justify-between border-b border-slate-800 gap-3">
+        <div className="flex items-center gap-3.5 text-right w-full xs:w-auto">
           <div className="relative">
+            {/* Pulsating Neon Green Profile border around Avatar */}
             <img 
               referrerPolicy="no-referrer"
               src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
               alt="الأستاذ دالي" 
-              className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500 shadow-md shadow-emerald-500/15"
+              className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400 shadow-[0_0_15px_#10b981] md:shadow-[0_0_18px_#10b981] animate-pulse hover:scale-105 hover:shadow-[0_0_20px_#06b6d4] hover:border-cyan-400 transition-all duration-300"
               onError={(e) => {
                 e.currentTarget.src = "https://img.icons8.com/color/150/user-male-circle.png";
               }}
             />
-            <span className="absolute bottom-0 right-0 text-lg leading-none" title="الجزائر 🇩🇿">🇩🇿</span>
+            {/* Algeria Flag next to Avatar */}
+            <span className="absolute bottom-0 right-0 text-xl leading-none px-1 py-0.5 bg-slate-950/80 rounded-full border border-slate-800 select-none" title="الجزائر 🇩🇿">🇩🇿</span>
           </div>
           <div>
-            <h3 className="font-bold text-white text-base md:text-lg flex items-center gap-2">
+            <h3 className="font-black text-white text-base md:text-lg flex items-center gap-2">
               الأستاذ دالي نجيب 
-              <span className="bg-emerald-950/80 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-900/30 font-semibold">
-                الرياضيات والذكاء الاصطناعي
+              <span className="bg-emerald-950/80 text-emerald-400 text-[10px] md:text-xs px-2 py-0.5 rounded-full border border-emerald-900/30 font-semibold select-none">
+                المنهاج الجزائري
               </span>
             </h3>
             <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              متصل الآن لتوجيهك ودراسة الدوال
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+              متصل لتوجيهك في جميع المواد والرياضيات 📖
             </p>
           </div>
         </div>
         
-        <button 
-          onClick={handleClearChat}
-          className="text-slate-400 hover:text-red-400 hover:bg-slate-850 p-2 rounded-lg transition-all duration-200 text-xs flex items-center gap-1.5"
-          title="مسح المحادثة وحبذا لو صليت على النبي قبل ذلك!"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline">تصفير الشات</span>
-        </button>
+        {/* Actions Bar: Robot Voice Synthesis toggle and Reset buttons */}
+        <div className="flex items-center justify-end gap-2 w-full xs:w-auto shrink-0">
+          {/* Confident Robot Voice toggle with neon indicator */}
+          <button
+            type="button"
+            onClick={() => {
+              const current = !isVoiceEnabled;
+              setIsVoiceEnabled(current);
+              if (!current && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                setSpeakingMsgId(null);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-200 text-xs font-bold shrink-0 cursor-pointer ${
+              isVoiceEnabled
+                ? "bg-gradient-to-r from-emerald-950/80 to-teal-950/80 text-emerald-400 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.35)] animate-pulse"
+                : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-705"
+            }`}
+            title="تفعيل أو كتم الصوت الروبوتي للأستاذ دالي"
+          >
+            {isVoiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+            <span>{isVoiceEnabled ? "نطق الإجابة مفعل" : "تفعيل نطق الأستاذ"}</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={handleClearChat}
+            className="text-slate-450 hover:text-red-400 bg-slate-900 hover:bg-slate-850 p-2 rounded-xl transition-all duration-200 text-xs flex items-center gap-1.5 border border-slate-800 hover:border-red-500/25 hover:shadow-[0_0_10px_rgba(239,68,68,0.25)] cursor-pointer shrink-0"
+            title="مسح المحادثة وحبذا لو صليت على النبي قبل ذلك!"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">مسح الشات</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Chat Display Canvas */}
@@ -423,36 +516,57 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
                   />
                 )}
 
-                {/* Message Body bubble */}
-                <div className={`flex flex-col max-w-[85%] ${
-                  msg.sender === "user" ? "items-end" : "items-start"
-                }`}>
-                  <div
-                    className={`p-3.5 rounded-2xl shadow-sm text-sm md:text-base leading-relaxed ${
-                      msg.sender === "user"
-                        ? "bg-slate-800 text-white border border-slate-700/70 rounded-tr-none text-right"
-                        : "bg-emerald-600 text-white rounded-tl-none text-right whitespace-pre-line shadow-sm"
-                    }`}
-                  >
-                    {/* Embedded image message if present */}
-                    {msg.imageUrl && (
-                      <div className="mb-3 rounded-lg overflow-hidden border border-slate-700 max-h-48">
-                        <img 
-                          referrerPolicy="no-referrer"
-                          src={msg.imageUrl} 
-                          alt="تم الرفع" 
-                          className="object-contain w-full h-full"
-                        />
-                      </div>
-                    )}
-                    {msg.text}
-                  </div>
-                  
-                  {/* Message Timestamp */}
-                  <span className="text-[10px] text-slate-400 mt-1 px-1">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
+                 {/* Message Body bubble */}
+                 <div className={`flex flex-col max-w-[85%] ${
+                   msg.sender === "user" ? "items-end" : "items-start"
+                 }`}>
+                   <div
+                     className={`p-4 rounded-2xl shadow-lg text-sm md:text-base leading-relaxed border relative group transition-all duration-300 ${
+                       msg.sender === "user"
+                         ? "bg-[#111827] text-slate-100 border-slate-800 rounded-tr-none text-right"
+                         : "bg-[#1a2436] text-slate-100 border-slate-750 rounded-tl-none text-right whitespace-pre-line shadow-emerald-500/5 hover:border-emerald-400/25"
+                     }`}
+                   >
+                     {/* Embedded image message if present */}
+                     {msg.imageUrl && (
+                       <div className="mb-3 rounded-lg overflow-hidden border border-slate-800 max-h-48">
+                         <img 
+                           referrerPolicy="no-referrer"
+                           src={msg.imageUrl} 
+                           alt="تم الرفع" 
+                           className="object-contain w-full h-full"
+                         />
+                       </div>
+                     )}
+                     
+                     {/* Voice Button embedded in teacher messages */}
+                     {msg.sender === "assistant" && (
+                       <div className="absolute top-2 left-2 opacity-80 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                         <button
+                           type="button"
+                           onClick={() => speakText(msg.text, msg.id)}
+                           className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                             speakingMsgId === msg.id
+                               ? "bg-emerald-900 border-emerald-500 text-emerald-400 shadow-[0_0_8px_#10b981]"
+                               : "bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/35"
+                           }`}
+                           title="تشغيل نطق أو شرح الأستاذ دالي"
+                         >
+                           <Volume2 className={`w-3.5 h-3.5 ${speakingMsgId === msg.id ? "animate-pulse" : ""}`} />
+                         </button>
+                       </div>
+                     )}
+
+                     <div className={msg.sender === "assistant" ? "pl-7" : ""}>
+                       {msg.text}
+                     </div>
+                   </div>
+                   
+                   {/* Message Timestamp */}
+                   <span className="text-[10px] text-slate-500 mt-1 px-1 select-none">
+                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   </span>
+                 </div>
 
                 {/* User Avatar */}
                 {msg.sender === "user" && (
@@ -534,10 +648,10 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
           <button
             type="button"
             onClick={triggerImageSelect}
-            className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white p-3 rounded-xl transition-all duration-200 border border-slate-800 hover:border-emerald-500/25 shrink-0"
+            className="bg-slate-900 hover:bg-slate-850 text-slate-305 hover:text-white p-3 rounded-xl transition-all duration-200 border border-slate-800 hover:border-cyan-400 hover:shadow-[0_0_12px_rgba(6,182,212,0.4)] shrink-0 cursor-pointer"
             title="إرفاق صورة التمرين الرياضي للأستاذ"
           >
-            <ImageIcon className="w-5 h-5 text-emerald-500" />
+            <ImageIcon className="w-5 h-5 text-cyan-455" />
           </button>
 
           {/* Text input */}
@@ -554,10 +668,10 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
           <button
             type="submit"
             disabled={isSending || (!inputMsg.trim() && !selectedImageBase64)}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800/80 disabled:opacity-50 text-white font-bold p-3 rounded-xl transition-all duration-200 shadow-sm shrink-0"
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:opacity-40 text-white font-bold p-3 rounded-xl transition-all duration-200 shadow-sm shadow-emerald-500/25 hover:shadow-[0_0_15px_#10b981] hover:scale-103 shrink-0 cursor-pointer border border-emerald-500/20"
           >
             {isSending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
             ) : (
               <Send className="w-5 h-5 transform rotate-180" />
             )}

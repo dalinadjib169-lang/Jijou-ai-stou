@@ -4,37 +4,32 @@ import { Sunrise, Sunset, Moon, Heart, Sparkles, Pause, Play } from "lucide-reac
 interface DhikrItem {
   text: string;
   category: "morning" | "evening" | "sleep" | "general";
+  type: "dua" | "quran" | "hadith";
 }
 
 const DHIKR_DATA: DhikrItem[] = [
-  // Morning Dhikr
-  { text: "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.", category: "morning" },
-  { text: "اللهم بك أصبحنا، وبك أمسينا، وبك نحيا، وبك نموت، وإليك النشور.", category: "morning" },
-  { text: "رضيت بالله رباً، وبالإسلام ديناً، وبمحمد ﷺ نبياً ورسولاً.", category: "morning" },
-  { text: "يا حي يا قيوم برحمتك أستغيث أصلح لي شأني كله ولا تكلني إلى نفسي طرفة عين.", category: "morning" },
-  { text: "اللهم ما أصبح بي من نعمة أو بأحد من خلقك فمنك وحدك لا شريك لك، فلك الحمد ولك الشكر.", category: "morning" },
-  { text: "أصبحنا على فطرة الإسلام وعلم الإخلاص ودين نبيّنا محمد ﷺ ملة أبينا إبراهيم حنيفاً مسلماً وما كان من المشركين.", category: "morning" },
+  // --- قرآن كريم (Red Color) ---
+  { text: "سورة الإخلاص: (قُلْ هُوَ اللَّهُ أَحَدٌ ۞ اللَّهُ الصَّمَدُ ۞ لَمْ يَلِدْ وَلَمْ يُولَدْ ۞ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ)", category: "morning", type: "quran" },
+  { text: "آية الكرسي: (اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ)", category: "morning", type: "quran" },
+  { text: "سورة الفلق: (قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۞ مِن شَرِّ مَا خَلَقَ ۞ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۞ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۞ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ)", category: "morning", type: "quran" },
+  { text: "سورة الناس: (قُلْ أَعُوذُ بِرَبِّ النَّاسِ ۞ مَلِكِ النَّاسِ ۞ إِلَٰهِ النَّاسِ ۞ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۞ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۞ مِنَ الْجِنَّةِ وَالنَّاسِ)", category: "evening", type: "quran" },
+  { text: "خواتيم سورة البقرة: (آمَنَ الرَّسُولُ بِمَا أُنزِلَ إِلَيْهِ مِن رَّبِّهِ وَالْمُؤْمِنُونَ ۚ كُلٌّ آمَنَ بِاللَّهِ وَمَلَائِكَتِهِ وَكُتُبِهِ وَرُسُلِهِ)", category: "sleep", type: "quran" },
 
-  // Evening Dhikr
-  { text: "أمسينَا وأمسَى الملكُ للهِ والحمدُ للهِ، لا إلهَ إلا اللهُ وحدَهُ لا شريكَ لهُ، لهُ الملكُ ولهُ الحمدُ وهوَ على كلِّ شيءٍ قديرٌ.", category: "evening" },
-  { text: "اللهم بك أمسينا، وبك أصبحنا، وبك نحيا، وبك نموت، وإليك المصير.", category: "evening" },
-  { text: "اللهم إنّي أمسيتُ أُشهدك، وأُشهدُ حملةَ عرشك وملائكتك وجميع خلقك أنك أنت الله لا إله إلا أنت.", category: "evening" },
-  { text: "أعوذ بكلمات الله التامات من شر ما خلق.", category: "evening" },
-  { text: "اللهم عافني في بدني، اللهم عافني في سمعي، اللهم عافني في بصري، لا إله إلا أنت.", category: "evening" },
+  // --- أحاديث نبوية (Orange Color) ---
+  { text: "قال رسول الله ﷺ: (مَنْ صَلَّى عَلَيَّ صَلَاةً وَاحِدَةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا)", category: "general", type: "hadith" },
+  { text: "قال النبي ﷺ: (كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ)", category: "general", type: "hadith" },
+  { text: "قال رسول الله ﷺ: (سَيِّدُ الِاسْتِغْفَارِ أَنْ تَقُولَ: اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ)", category: "morning", type: "hadith" },
+  { text: "قال النبي ﷺ: (مَنْ قَالَ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ مِائَةَ مَرَّةٍ، حُطَّتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ)", category: "general", type: "hadith" },
+  { text: "قال رسول الله ﷺ: (مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي سُبْحَانَ اللَّهِ وَبِحَمْدِهِ مِائَةَ مَرَّةٍ لَمْ يَأْتِ أَحَدٌ يَوْمَ الْقِيَامَةِ بِأَفْضَلَ مِمَّا جَاءَ بِهِ)", category: "evening", type: "hadith" },
 
-  // Sleep Dhikr
-  { text: "باسمك ربي وضعت جنبي، وبك أرفعه، فإن أمسكت نفسي فارحمها، وإن أرسلتها فاحفظها بما تحفظ به عبادك الصالحين.", category: "sleep" },
-  { text: "اللهم قني عذابك يوم تبعث عبادك.", category: "sleep" },
-  { text: "الحمد لله الذي أطعمنا وسقانا، وكفانا وآوانا، فكم ممن لا كافي له ولا مؤوي.", category: "sleep" },
-  { text: "اللهم أسلمت نفسي إليك، وفوضت أمري إليك، ووجهت وجهي إليك، وألجأت ظهري إليك، رغبة ورهبة إليك.", category: "sleep" },
-
-  // General Dhikr & Supplications
-  { text: "سبحان الله وبحمده، عدد خلقه، ورضا نفسه، وزنة عرشه، ومداد كلماته.", category: "general" },
-  { text: "اللهم صلِّ وسلم وبارك على نبينا محمد وعلى آله وصحبه أجمعين.", category: "general" },
-  { text: "لا إله إلا أنت سبحانك إني كنت من الظالمين.", category: "general" },
-  { text: "استغفر الله العظيم الذي لا إله إلا هو الحي القيوم وأتوب إليه.", category: "general" },
-  { text: "سبحان الله، والحمد لله، ولا إله إلا الله، والله أكبر، ولا حول ولا قوة إلا بالله العلي العظيم.", category: "general" },
-  { text: "اللهم إنك عفو تحب العفو فاعفُ عني.", category: "general" }
+  // --- أدعية مأثورة (Green Color) ---
+  { text: "اللَّهُمَّ عافِني في بَدَني، اللَّهُمَّ عافِني في سَمْعي، اللَّهُمَّ عافِني في بَصَري، لا إلهَ إلَّا أنتَ.", category: "morning", type: "dua" },
+  { text: "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.", category: "morning", type: "dua" },
+  { text: "أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", category: "evening", type: "dua" },
+  { text: "اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي.", category: "general", type: "dua" },
+  { text: "بِاسْمِكَ رَبِّي وَضَعْتُ جَنْبِي، وَبِكَ أَرْفَعُهُ، فَإِنْ أَمْسَكْتَ نَفْسِي فَارْحَمْهَا، وَإِنْ أَرْسَلْتَهَا فَاحْفَظْهَا بِمَا تَحْفَظُ بِهِ عِبَادَكَ الصَّالِحِينَ.", category: "sleep", type: "dua" },
+  { text: "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ.", category: "morning", type: "dua" },
+  { text: "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ.", category: "evening", type: "dua" }
 ];
 
 export default function DhikrTicker() {
@@ -47,6 +42,7 @@ export default function DhikrTicker() {
   const filteredDhikr = selectedCategory === "all" 
     ? DHIKR_DATA 
     : DHIKR_DATA.filter(item => item.category === selectedCategory);
+
 
   return (
     <div className="bg-[#131b2e] rounded-2xl border border-slate-800/80 shadow-lg p-4 space-y-4 text-right">
@@ -194,18 +190,41 @@ export default function DhikrTicker() {
             {/* Render 4 copies side-by-side to allow seamless continuous wrap-around without empty space */}
             {[1, 2, 3, 4].map((trackNo) => (
               <div key={`track-no-${trackNo}`} className="flex items-center gap-6 shrink-0 pl-8">
-                {filteredDhikr.map((item, idx) => (
-                  <span key={`ticker-item-${trackNo}-${idx}`} className="inline-flex items-center mx-3 text-slate-100 font-medium select-none">
-                    <span className="text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full text-[10px] font-bold ml-2.5 border border-emerald-900/50">
-                      {item.category === "morning" && "صباح"}
-                      {item.category === "evening" && "مساء"}
-                      {item.category === "sleep" && "نوم"}
-                      {item.category === "general" && "ذكر"}
-                    </span>
-                    <span className="text-xs sm:text-sm tracking-wide leading-relaxed font-sans">{item.text}</span>
-                    <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 mr-4 shrink-0 animate-pulse" />
-                  </span>
-                ))}
+                 {filteredDhikr.map((item, idx) => {
+                   let textColorClass = "text-slate-100";
+                   let badgeColorClass = "text-emerald-400 bg-emerald-950/80 border-emerald-900/50";
+                   let typeLabel = "ذكر";
+                   
+                   if (item.type === "quran") {
+                     textColorClass = "text-red-400 font-semibold drop-shadow-[0_0_3px_rgba(239,68,68,0.5)]";
+                     badgeColorClass = "text-red-400 bg-red-950/80 border-red-900/50";
+                     typeLabel = "📖 قرآن كريم";
+                   } else if (item.type === "hadith") {
+                     textColorClass = "text-orange-400 font-semibold drop-shadow-[0_0_3px_rgba(249,115,22,0.55)]";
+                     badgeColorClass = "text-orange-400 bg-orange-950/80 border-orange-900/50";
+                     typeLabel = "💬 حديث شريف";
+                   } else if (item.type === "dua") {
+                     textColorClass = "text-emerald-400 font-semibold drop-shadow-[0_0_3px_rgba(16,185,129,0.5)]";
+                     badgeColorClass = "text-emerald-400 bg-emerald-950/80 border-emerald-900/50";
+                     typeLabel = "🤲 دعاء كريم";
+                   }
+
+                   return (
+                     <span key={`ticker-item-${trackNo}-${idx}`} className="inline-flex items-center mx-5 select-none">
+                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ml-2.5 border ${badgeColorClass}`}>
+                         {typeLabel}
+                         <span className="opacity-60 font-medium mr-1">
+                           ({item.category === "morning" && "صباح"}
+                            {item.category === "evening" && "مساء"}
+                            {item.category === "sleep" && "نوم"}
+                            {item.category === "general" && "عام"})
+                         </span>
+                       </span>
+                       <span className={`text-xs sm:text-sm tracking-wide leading-relaxed font-sans ${textColorClass}`}>{item.text}</span>
+                       <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 mr-4 shrink-0 animate-pulse" />
+                     </span>
+                   );
+                 })}
               </div>
             ))}
           </div>
