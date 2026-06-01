@@ -31,6 +31,7 @@ export default function MathFunctionSection({
   const [isStudyingByAi, setIsStudyingByAi] = useState(false);
   const [aiStudyResult, setAiStudyResult] = useState<string | null>(null);
   const [isAskingAi, setIsAskingAi] = useState(false);
+  const [subTab, setSubTab] = useState<"plotter" | "analytical">("plotter");
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,11 +39,16 @@ export default function MathFunctionSection({
   // Parse and evaluate a function string for a given x
   const evaluateFunc = (expr: string, x: number): number => {
     try {
-      let formatted = expr.toLowerCase();
+      let cleanExpr = expr.trim();
+      if (cleanExpr.includes("=")) {
+        cleanExpr = cleanExpr.split("=").pop() || "";
+      }
+      
+      let formatted = cleanExpr.toLowerCase();
       formatted = formatted
         .replace(/\s+/g, "")
-        .replace(/(\d)\(/g, "$1*(") 
-        .replace(/(\d)(x)/g, "$1*$2")
+        .replace(/(\d)([a-z])/g, "$1*$2") // Handles 2x, 2sin, 2cos, etc.
+        .replace(/(\d)\(/g, "$1*(")       // Handles 2(x+1)
         .replace(/\^/g, "**")
         .replace(/sin/g, "Math.sin")
         .replace(/cos/g, "Math.cos")
@@ -694,10 +700,34 @@ f(x) = ${expression}
         </div>
       </div>
 
+      {/* Dynamic Sub-Tab Switched Navigation */}
+      <div className="flex items-center justify-end bg-[#131b2e] p-1.5 rounded-2xl border border-slate-800/80 max-w-lg ml-auto gap-2">
+        <button
+          onClick={() => setSubTab("analytical")}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
+            subTab === "analytical"
+              ? "bg-slate-850 text-emerald-400 border border-emerald-500/10 shadow"
+              : "text-slate-400 hover:text-slate-100"
+          }`}
+        >
+          <span>دراسة النهايات والمشتقة بالتفصيل 🔮</span>
+        </button>
+        <button
+          onClick={() => setSubTab("plotter")}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer text-center ${
+            subTab === "plotter"
+              ? "bg-slate-850 text-emerald-400 border border-emerald-500/10 shadow"
+              : "text-slate-400 hover:text-slate-100"
+          }`}
+        >
+          <span>الراسم وجدول التغيرات 📈</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Side: Formula control and analytical questions (5 cols) */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className={`lg:col-span-5 space-y-6 ${subTab === "analytical" ? "hidden" : ""}`}>
           
           {/* Main function formula card input */}
           <div className="bg-[#131b2e] p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
@@ -940,10 +970,10 @@ f(x) = ${expression}
         </div>
 
         {/* Right Side: Graphing Screen and dynamic variations table (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className={`space-y-6 ${subTab === "analytical" ? "lg:col-span-12" : "lg:col-span-7"}`}>
           
           {/* Canvas coordinate plotter card */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden space-y-4">
+          <div className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden space-y-4 ${subTab === "analytical" ? "hidden" : ""}`}>
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 flex-wrap">
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500"></span> f(x)
@@ -971,7 +1001,7 @@ f(x) = ${expression}
           </div>
 
           {/* Table of Variations - جدول التغيرات تفاعلي وواضح */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-right">
+          <div className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-right ${subTab === "analytical" ? "hidden" : ""}`}>
             <div className="flex items-center justify-between pb-2 border-b border-slate-150">
               <span className="text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200 font-bold font-mono">Df نشيط</span>
               <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
@@ -1067,13 +1097,72 @@ f(x) = ${expression}
           </div>
 
           {/* New Comprehensive Limits, Derivatives & Interactive Dialogue Station */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-3xl border border-emerald-500/20 shadow-xl text-right space-y-6">
+          <div className={`bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-3xl border border-emerald-500/20 shadow-xl text-right space-y-6 ${subTab === "plotter" ? "hidden" : ""}`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/20">منصة البكالوريا المتقدمة</span>
               <h4 className="text-white font-black text-base flex items-center gap-2 justify-end">
                 محطة تفصيل النهايات والمشتقة مع الأستاذ دالي 🎓🧮
                 <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
               </h4>
+            </div>
+
+            {/* Inline dynamic formula configuration bar */}
+            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-850 space-y-4">
+              <h5 className="font-sans font-black text-xs sm:text-sm text-slate-100 flex items-center justify-end gap-1.5">
+                تعديل صيغة الدالة f(x) المراد تحليلها ودراستها ⚙️🧮
+                <Activity className="w-4 h-4 text-emerald-400" />
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <button
+                    onClick={studyFunctionWithAI}
+                    disabled={isStudyingByAi}
+                    className="w-full bg-gradient-to-l from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-700 hover:via-teal-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-75 disabled:cursor-wait cursor-pointer border border-emerald-500/10"
+                  >
+                    {isStudyingByAi ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                        <span>الأستاذ دالي يقوم بدراستها... صبراً 🧮</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                        <span>دراسة كاملة بالذكاء الاصطناعي f(x) 🧠✨</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2 text-emerald-400 font-serif font-black text-sm">f(x) =</span>
+                  <input 
+                    type="text" 
+                    value={expression} 
+                    onChange={(e) => setExpression(e.target.value)}
+                    placeholder="مثال: (x^2 - 1) / (x - 2)"
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-16 pr-4 py-2 text-left font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {aiStudyResult && (
+                <div className="bg-slate-950 text-right p-4 rounded-xl border border-emerald-500/35 shadow-inner space-y-3 mt-4">
+                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border border-slate-800/80">
+                    <button 
+                      onClick={() => setAiStudyResult(null)}
+                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-755 px-2 py-0.5 rounded cursor-pointer font-sans"
+                    >
+                      إغلاق ✕
+                    </button>
+                    <span className="text-emerald-400 font-extrabold text-[11px] sm:text-xs flex items-center gap-1 font-sans">
+                      تقرير دراسة الدالة f(x) الشامل
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
+                    {aiStudyResult}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Math Rules Cheat Sheet */}
@@ -1327,7 +1416,7 @@ f(x) = ${expression}
           </div>
 
           {/* Intermediate Value Theorem widget */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 ${subTab === "analytical" ? "hidden" : ""}`}>
             <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
               التحقق من مبرهنة القيم المتوسطة (T.V.I)
               <Scale className="w-5 h-5 text-emerald-600" />

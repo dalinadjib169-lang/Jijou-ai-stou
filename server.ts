@@ -147,7 +147,13 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     // Loop through keys and try them in sequence
     for (let i = 0; i < keysToTry.length; i++) {
       const activeKey = keysToTry[i];
-      console.log(`[Server Key Rotation] Attempting key ${i + 1}/${keysToTry.length}: ${activeKey.substring(0, 10)}...`);
+      if (!activeKey || typeof activeKey !== "string") {
+        console.warn(`[Server Key Rotation] Warning: API key at index ${i} is empty or not a string.`);
+        continue;
+      }
+
+      const keyDisplay = activeKey.substring(0, 10);
+      console.log(`[Server Key Rotation] Attempting key ${i + 1}/${keysToTry.length}: ${keyDisplay}...`);
 
       try {
         const ai = new GoogleGenAI({
@@ -165,6 +171,7 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
         // Map history to Google GenAI structure with strict alternating role safety
         if (Array.isArray(history)) {
           history.forEach((turn: any) => {
+            if (!turn || typeof turn !== "object") return;
             const isModel = turn.role === "assistant" || turn.role === "model" || turn.role === "dali";
             contents.push({
               role: isModel ? "model" : "user",
@@ -194,10 +201,62 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
           parts: newParts
         });
 
+        // Sanitize and alternate roles in contents list to prevent validation errors
+        let finalizedContents: any[] = [];
+        for (const item of contents) {
+          const hasTextParts = item.parts && item.parts.some((p: any) => p.text || p.inlineData);
+          if (hasTextParts) {
+            finalizedContents.push(item);
+          }
+        }
+
+        // Compact consecutive items of the same role
+        const consolidated: any[] = [];
+        for (const turn of finalizedContents) {
+          if (consolidated.length > 0 && consolidated[consolidated.length - 1].role === turn.role) {
+            consolidated[consolidated.length - 1].parts = [
+              ...consolidated[consolidated.length - 1].parts,
+              ...turn.parts
+            ];
+          } else {
+            consolidated.push(turn);
+          }
+        }
+
+        // Ensure conversation has strictly alternating roles
+        let cleanHistory: any[] = [];
+        let expectedRole = "user";
+        for (const turn of consolidated) {
+          if (turn.role === expectedRole) {
+            cleanHistory.push(turn);
+            expectedRole = expectedRole === "user" ? "model" : "user";
+          } else {
+            if (cleanHistory.length > 0) {
+              const prev = cleanHistory[cleanHistory.length - 1];
+              prev.parts = [...prev.parts, ...turn.parts];
+            } else if (turn.role === "user") {
+              cleanHistory.push(turn);
+              expectedRole = "model";
+            }
+          }
+        }
+
+        // Finally, make sure the last item in cleanHistory is a user turn so model can reply
+        while (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role !== "user") {
+          cleanHistory.pop();
+        }
+
+        if (cleanHistory.length === 0) {
+          cleanHistory.push({
+            role: "user",
+            parts: newParts
+          });
+        }
+
         // Generate output
         const response = await ai.models.generateContent({
           model: "gemini-3.5-flash",
-          contents,
+          contents: cleanHistory,
           config: {
             systemInstruction: SYSTEM_INSTRUCTION,
             temperature: 0.75,
