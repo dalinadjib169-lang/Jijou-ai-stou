@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play, Keyboard, HelpCircle as QuestionIcon, CornerDownLeft, MessageSquare, Plus, RotateCcw } from "lucide-react";
+import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play, Keyboard, HelpCircle as QuestionIcon, CornerDownLeft, MessageSquare, Plus, RotateCcw, Loader2 } from "lucide-react";
 
 export default function MathFunctionSection() {
   const [expression, setExpression] = useState("(x^2 - 1) / (x - 2)");
@@ -16,6 +16,11 @@ export default function MathFunctionSection() {
 
   const [studentQuestion, setStudentQuestion] = useState("");
   const [systemAnswer, setSystemAnswer] = useState<string | null>(null);
+  
+  // AI Full-Study & Ask states
+  const [isStudyingByAi, setIsStudyingByAi] = useState(false);
+  const [aiStudyResult, setAiStudyResult] = useState<string | null>(null);
+  const [isAskingAi, setIsAskingAi] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -399,118 +404,91 @@ export default function MathFunctionSection() {
     return intersections;
   };
 
-  // Automated Mathematical Assistant Solver
-  const solveStudentQuestion = (type: string) => {
-    let ans = "";
-    if (type === "limits") {
-      const l1 = evaluateFunc(expression, -100);
-      const l2 = evaluateFunc(expression, 100);
-      ans = `📝 **دراسة نهايات الدالة f(x) عند أطراف مجال التعريف:**\n\n`;
-      ans += `1. **عند ناقص ما لا نهاية (-∞):** بالنهاية التجريبية عند x = -100، القيمة هي تقريباً: **${isNaN(l1) ? "غير معرفة" : l1.toFixed(2)}**.\n`;
-      ans += `2. **عند زائد ما لا نهاية (+∞):** بالنهاية التجريبية عند x = 100، القيمة هي تقريباً: **${isNaN(l2) ? "غير معرفة" : l2.toFixed(2)}**.\n\n`;
-      if (forbiddenValues.length > 0) {
-        ans += `⚠️ **النهايات عند القيم الممنوعة :**\n`;
-        forbiddenValues.forEach(fV => {
-          const leftLim = evaluateFunc(expression, fV - 0.01);
-          const rightLim = evaluateFunc(expression, fV + 0.01);
-          ans += `- **عند ${fV} بقيم صغرى (<):** تقرب من **${leftLim > 100 ? "+∞" : leftLim < -100 ? "-∞" : leftLim.toFixed(1)}**\n`;
-          ans += `- **عند ${fV} بقيم كبرى (>):** تقرب من **${rightLim > 100 ? "+∞" : rightLim < -100 ? "-∞" : rightLim.toFixed(1)}**\n`;
-          ans += `هذا يؤكد أن المستقيم ذو المعادلة **x = ${fV}** هو مستقيم مقارب عمودي للمنحنى Cf! 📐\n`;
-        });
-      }
-    } else if (type === "critical") {
-      ans = `📝 **دراسة القيم الحدية (المشتق ينعدم ويغير إشارته):**\n\n`;
-      if (criticalPointsList.length === 0) {
-        ans += `لا توجد قيم حدية (عظمى أو صغرى) مرصودة محلياً في النطاق العام للدالة. قد تكون الدالة رتيبة تماماً. 📈`;
+  // AI study function representing the core user requirement: "دراسة الدالة بالذكاء الاصطناعي مع حلول وتفاصيل"
+  const studyFunctionWithAI = async () => {
+    setIsStudyingByAi(true);
+    setAiStudyResult(null);
+    try {
+      const prompt = `أهلاً بك يا أستاذ دالي. أرجو منك دراسة وتحليل الدالة الرياضية التالية دراسة مفصلة ودقيقة مثل باكلوريا الجزائر:
+صيغة الدالة: f(x) = ${expression}
+
+يرجى إعطاء شرح تفصيلي خطوة بخطوة باللغة العربية وطريقتك الودودة المشجعة الجزائريية (الأستاذ دالي نجيب):
+1. **خطوة 1: النهايات والاتجاه (Limits):** حساب النهايات لـ f(x) عند أطراف مجموعة التعريف، مع توضيح جميع المستقيمات المقاربة (Asymptotes) الأفقية، والعمودية، والمائلة مع معادلاتها الرياضية بدقة (مثال: x = 2، y = x + 2).
+2. **خطوة 2: الدالة المشتقة (Derivative):** حساب الدالة المشتقة f'(x) بالتفصيل، وتحديد إشارتها وجدول التغيرات بوضوح.
+3. **خطوة 3: معادلة المماس (Tangent):** كتابة معادلة المماس للمنحنى Cf عند النقطة ذات الفاصلة x₀ = ${tangentPoint}.
+4. **خطوة 4: مبرهنة القيم المتوسطة (T.V.I):** دراسة وجود حلول المعادلة f(x) = 0 على المجال [${intervalA}, ${intervalB}] بالتطبيق الدقيق للمبرهنة مع الشرح والتبرير.
+5. **خطوة 5: دراسة الوسيط m (Parameter Discussion):** مناقشة بيانية وتفصيلية لعدد وإشارة حلول المعادلة f(x) = m (أو تبعاً لوسيط m إن وُجد في المعادلة الأصلية).
+
+أبهر التلميذ بتنظيم رائع، محفز وبخطوات واضحة جداً تسهل الحفظ والفهم، واطرح في النهاية سؤالاً بريئاً لتقييم فهمه، ولا تنسى العبارة الختامية الرائعة.`;
+
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        setAiStudyResult(data.reply);
+      } else if (data.error) {
+        setAiStudyResult(`عذراً يا بطل، واجهت مشكلة: ${data.error}`);
       } else {
-        criticalPointsList.forEach((pt, i) => {
-          ans += `${i+1}. **نقطة عند x = ${pt.x}:** قمنا بحساب قيمة الدالة ووجدنا f(${pt.x}) = **${pt.y}**.\n`;
-          ans += `   - **النوع:** ${pt.type === "max" ? "قيمة حدية عظمى محلية (Maximum) 🔼" : "قيمة حدية صغرى محلية (Minimum) 🔽"}.\n`;
-        });
+        setAiStudyResult("تعذر الحصول على دراسة تفصيلية من الأستاذ دالي في هذه اللحظة.");
       }
-    } else if (type === "parity") {
-      const f1 = evaluateFunc(expression, 2);
-      const fMinus1 = evaluateFunc(expression, -2);
-      ans = `📝 **دراسة شفعية الدالة ومعاينة التناظر (Parity Check):**\n\n`;
-      if (isNaN(f1) || isNaN(fMinus1)) {
-        ans += `تعذر التحقق تجريبياً بسبب وجود قيم ممنوعة تعرقل الحساب المباشر عند x=2 و x=-2.`;
-      } else {
-        const isEven = Math.abs(f1 - fMinus1) < 0.05;
-        const isOdd = Math.abs(f1 + fMinus1) < 0.05;
-        ans += `نقوم بمقارنة f(2) مع f(-2):\n`;
-        ans += `- f(2) = **${f1.toFixed(2)}**\n- f(-2) = **${fMinus1.toFixed(2)}**\n\n`;
-        if (isEven) {
-          ans += `✓ **الدالة زوجية (Even):** f(-x) = f(x). منحنى الدالة متناظر بالنسبة لمحور التراتيب (y-axis).`;
-        } else if (isOdd) {
-          ans += `✓ **الدالة فردية (Odd):** f(-x) = -f(x). منحنى الدالة متناظر بالنسبة لمركز المعلم (نقطة المبدأ 0).`;
-        } else {
-          ans += `❌ **ليست زوجية وليست فردية:** f(-x) ≠ f(x) و f(-x) ≠ -f(x). لا يوجد تناظر مباشر لمركز المعلم أو محور التراتيب.`;
-        }
-      }
-    } else if (type === "intercepts") {
-      ans = `📝 **نقاط التقاطع مع محوري الإحداثيات:**\n\n`;
-      const yInt = evaluateFunc(expression, 0);
-      ans += `1. **تقاطع مع محور التراتيب (y-axis) [حساب f(0)]:**\n`;
-      ans += isNaN(yInt) ? `   - الدالة غير معرفة عند x=0. لا توجد نقطة تقاطع.\n` : `   - النقطة هي: **(0, ${yInt.toFixed(2)})**.\n\n`;
-      
-      ans += `2. **تقاطع مع محور الفواصل (x-axis) [حل المعادلة f(x) = 0]:**\n`;
-      const xIntercepts: number[] = [];
-      for (let x = -10; x <= 10; x += 0.2) {
-        if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.15)) continue;
-        const v = evaluateFunc(expression, x);
-        const nextV = evaluateFunc(expression, x + 0.2);
-        if (v * nextV < 0 || Math.abs(v) < 0.05) {
-          const approx = Math.round((x + 0.1) * 10) / 10;
-          if (!xIntercepts.includes(approx)) xIntercepts.push(approx);
-        }
-      }
-      if (xIntercepts.length === 0) {
-        ans += `   - لم يُرصد تقاطع صفري مباشر في نطاق المخطط النشط.`;
-      } else {
-        ans += `   - النقاط المقدرة هي: ` + xIntercepts.map(x0 => `**(${x0}, 0)**`).join(" , ");
-      }
-    } else if (type === "param") {
-      ans = `📝 **شرح تفصيلي للمناقشة الوسيطية الحالية للمستقيم (y = m):**\n\n`;
-      ans += `من أجل القيمة الحالية للوسيط الحقيقي m = **${mValue.toFixed(2)}**، المستقيم الأفقي هو ذو المعادلة **y = ${mValue.toFixed(2)}**.\n`;
-      ans += `بملاحظة المخطط البياني وتقاطعه مع هذا الخط الوردي المنقط، نجد:\n`;
-      const solCount = countParameterSolutions();
-      if (solCount === 0) {
-        ans += `- عدد الحلول: **لا توجد حلول حقيقية** (المستقيم لا يقطع المنحنى Cf عند هذا الارتفاع).\n`;
-      } else if (solCount === 1) {
-        ans += `- عدد الحلول: **حل واحد وحيد** موجد في النطاق.\n`;
-      } else if (solCount === 2) {
-        ans += `- عدد الحلول: **حلان حقيقيان متمايزان** (يقطع المستقيم التقاطعي في نقطتين مختلفة).\n`;
-      } else {
-        ans += `- عدد الحلول: **${solCount} حلول حقيقية**.\n`;
-      }
-    } else {
-      // General full intelligence query parsing
-      const q = studentQuestion.toLowerCase();
-      if (q.includes("زوجية") || q.includes("فردية") || q.includes("شفعية") || q.includes("تناظر")) {
-        solveStudentQuestion("parity");
-        return;
-      }
-      if (q.includes("نهاية") || q.includes("نهايات") || q.includes("أطراف")) {
-        solveStudentQuestion("limits");
-        return;
-      }
-      if (q.includes("تقاطع") || q.includes("محو") || q.includes("نقاط")) {
-        solveStudentQuestion("intercepts");
-        return;
-      }
-      if (q.includes("قيمة حدية") || q.includes("عظمى") || q.includes("صغرى") || q.includes("ذروة") || q.includes("تغير")) {
-        solveStudentQuestion("critical");
-        return;
-      }
-      
-      ans = `🤖 **تحليل الأستاذ دالي الذكي لسؤالك:**\n\n`;
-      ans += `لقد سألت عن: "${studentQuestion}"\n`;
-      ans += `بخصوص الدالة الحالية **f(x) = ${expression}**:\n\n`;
-      ans += `- **نقاط التقاطع مع محور الفواصل:** بدراسة سريعة، تدرج صفرية الدالة يدل على وجود تقاطعات في المحاور.\n`;
-      ans += `- **مجال التعريف Df:** الدالة غير معرّفة عند القيم ${forbiddenValues.length > 0 ? forbiddenValues.join(", ") : "لا توجد قيم ممنوعة"}.\n\n`;
-      ans += `💡 يمكنك الضغط على أحد الأسئلة الجاهزة الموضحة بالأسفل للحصول على تحليل رياضي وحساب معزز في لحظات!`;
+    } catch (error) {
+      console.error(error);
+      setAiStudyResult("فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي. يرجى التأكد من تشغيل الشبكة ومفتاح API في الإعدادات.");
+    } finally {
+      setIsStudyingByAi(false);
     }
-    setSystemAnswer(ans);
+  };
+
+  // Automated Mathematical Assistant Solver with complete Gemini API integration
+  const solveStudentQuestion = async (type: string) => {
+    setIsAskingAi(true);
+    setSystemAnswer(null);
+    try {
+      let promptTopic = "";
+      if (type === "limits") {
+        promptTopic = `احسب واشرح نهايات الدالة f(x) = ${expression} عند أطراف مجال تعريفها بالتفصيل مع مستقيماتها المقاربة.`;
+      } else if (type === "critical") {
+        promptTopic = `ابحث عن القيم الحدية للدالة f(x) = ${expression} وحساب المشتقة الأولى f'(x) مع دراسة إشارتها وتغير الدالة.`;
+      } else if (type === "parity") {
+        promptTopic = `ابحث في شفعية الدالة f(x) = ${expression} وتماثل منحنيها البياني بالنسبة للمحاور أو نقطة المبدأ.`;
+      } else if (type === "intercepts") {
+        promptTopic = `أوجد نقاط تقاطع المنحنى التابع للدالة f(x) = ${expression} مع محوري الفواصل والتراتيب شرحاً رياضياً.`;
+      } else if (type === "param") {
+        promptTopic = `اشرح وناقش بيانيا حلول المعادلة f(x) = m للوسيط m الحقيقي بالنسبة للمنحنى f(x) = ${expression}.`;
+      } else {
+        promptTopic = studentQuestion || "اشرح لي كيفية دراسة المنحنى وجدول تغيرات هذه الدالة بالتفصيل.";
+      }
+
+      const fullPrompt = `أنت الأستاذ دالي نجيب لمادة الرياضيات. بخصوص الدالة:
+f(x) = ${expression}
+مجال التعريف: القيم الممنوعة المرصودة هي [${forbiddenValues.join(", ") || "لا توجد"}]
+نقطة التماس x₀ = ${tangentPoint}
+
+أجبني كطالب يسأل بفضول علمي عن هذا الموضوع بأسلوبك الجزائري الودود المبهج والأخوي جداً وصلي على محمد في البداية:
+"${promptTopic}"`;
+
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: fullPrompt }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        setSystemAnswer(data.reply);
+      } else if (data.error) {
+        setSystemAnswer(`عذراً، حدث خطأ: ${data.error}`);
+      } else {
+        setSystemAnswer("عذراً بني، لم أستطع صياغة تبرير رياضي في هذه اللحظة. صلي على محمد وحاول مجدداً!");
+      }
+    } catch (error) {
+      console.error(error);
+      setSystemAnswer("فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي. يرجى التحقق من لوحة التحكم ومفتاح API في الإعدادات.");
+    } finally {
+      setIsAskingAi(false);
+    }
   };
 
   // Switch to chat tab carrying the question
@@ -577,6 +555,58 @@ export default function MathFunctionSection() {
                   />
                 </div>
               </div>
+
+              {/* Study the Function AI Button directly next to formula writing */}
+              <button
+                onClick={studyFunctionWithAI}
+                disabled={isStudyingByAi}
+                className="w-full bg-gradient-to-l from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-700 hover:via-teal-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-75 disabled:cursor-wait cursor-pointer border border-emerald-500/20"
+              >
+                {isStudyingByAi ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>الأستاذ دالي يقوم بالدراسة الشاملة... صبراً جميل 🧮</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                    <span>دراسة الدالة الشاملة بالذكاء الاصطناعي 🧠✨</span>
+                  </>
+                )}
+              </button>
+
+              {/* AI study result display */}
+              {aiStudyResult && (
+                <div className="bg-[#1e293b] text-right p-4 rounded-xl border border-emerald-500/35 shadow-inner space-y-3">
+                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border-b border-emerald-700/30">
+                    <button 
+                      onClick={() => setAiStudyResult(null)}
+                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      إغلاق ✕
+                    </button>
+                    <span className="text-emerald-400 font-extrabold text-[11px] sm:text-xs flex items-center gap-1">
+                      نتيجة دراسة الدالة - الأستاذ دالي
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
+                    {aiStudyResult}
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-700/45 pt-2 text-[10px] text-slate-400">
+                    <span>صانع الأجيال دالي نجيب 🎓</span>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(aiStudyResult);
+                        alert("✓ تم نسخ تقرير دراسة الدالة بالكامل للحافظة!");
+                      }}
+                      className="text-[10px] bg-emerald-600 hover:bg-emerald-50 text-white font-bold px-2 py-1 rounded cursor-pointer"
+                    >
+                      نسخ الشرح الكامل
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Mathematical Shortcut Keyboard Panel */}
               <div className="bg-slate-50 hover:bg-slate-100/70 p-3 rounded-xl border border-slate-200 space-y-2 transition-colors">
@@ -705,31 +735,43 @@ export default function MathFunctionSection() {
               />
 
               <div className="flex flex-wrap gap-1.5 justify-end">
-                <button onClick={() => solveStudentQuestion("parity")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">شفعية الدالة؟</button>
-                <button onClick={() => solveStudentQuestion("intercepts")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">نقاط التقاطع؟</button>
-                <button onClick={() => solveStudentQuestion("limits")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">النهايات وأطراف Df؟</button>
-                <button onClick={() => solveStudentQuestion("critical")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">القيم الحدية؟</button>
-                <button onClick={() => solveStudentQuestion("param")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-s600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none">المناقشة m؟</button>
+                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("parity")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">شفعية الدالة؟</button>
+                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("intercepts")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">نقاط التقاطع؟</button>
+                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("limits")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">النهايات وأطراف Df؟</button>
+                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("critical")} className="bg-slate-100 font-bold hover:bg-slate-200 text-slate-600 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-150 transition select-none disabled:opacity-50">القيم الحدية؟</button>
+                <button disabled={isAskingAi} onClick={() => solveStudentQuestion("param")} className="bg-slate-100 font-bold hover:bg-slate-200 text-[#ea580c] text-[10px] px-2.5 py-1.5 rounded-lg border border-orange-200/50 hover:border-orange-300 transition select-none disabled:opacity-50 font-black">المناقشة m؟</button>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={() => solveStudentQuestion("general")}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 shadow transition cursor-pointer"
+                  disabled={isAskingAi || !studentQuestion.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shadow transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>تحليل السؤال</span>
+                  {isAskingAi ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  )}
+                  <span>{isAskingAi ? "مساعد دالي يجيبك..." : "حل السؤال بالـ AI"}</span>
                 </button>
                 <button 
                   onClick={sendQuestionToChatTab}
-                  className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>مناقشة بالدردشة 💬</span>
                 </button>
               </div>
 
-              {systemAnswer && (
+              {isAskingAi && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 text-center animate-pulse">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1.5 text-emerald-600" />
+                  <span>يكتب الأستاذ دالي الآن... ترقب الإجابة خطوة بخطوة 🧠✍️</span>
+                </div>
+              )}
+
+              {systemAnswer && !isAskingAi && (
                 <div className="bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right space-y-2 max-h-60 overflow-y-auto whitespace-pre-wrap">
                   {systemAnswer}
                 </div>

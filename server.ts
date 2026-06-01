@@ -19,7 +19,9 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 import firebaseConfig from "./firebase-applet-config.json" with { type: "json" };
 
 const fbApp = initializeApp(firebaseConfig);
-const firestoreDb = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);
+const firestoreDb = firebaseConfig.firestoreDatabaseId
+  ? getFirestore(fbApp, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(fbApp);
 
 // Core System Instruction for Professor Dali Persona
 const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ مادة الرياضيات القدير والمبرمج بالذكاء الاصطناعي من الجزائر.

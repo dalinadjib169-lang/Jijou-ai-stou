@@ -157,7 +157,7 @@ export default function DhikrTicker() {
       </div>
 
       {/* Scrolling Text marquee container */}
-      <div className="bg-slate-50 border border-slate-150 rounded-xl py-3 px-4 overflow-hidden relative shadow-inner">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 overflow-hidden relative shadow-inner">
         <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
         
@@ -165,17 +165,15 @@ export default function DhikrTicker() {
         <marquee
           scrollamount={isPaused ? 0 : tickerSpeed}
           direction="right"
-          className="w-full flex items-center"
-          onMouseOver={(e) => {
+          className="w-full block"
+          onMouseOver={(e: any) => {
             if (!isPaused) e.currentTarget.setAttribute("scrollamount", "0");
           }}
-          onMouseOut={(e) => {
+          onMouseOut={(e: any) => {
             if (!isPaused) e.currentTarget.setAttribute("scrollamount", tickerSpeed.toString());
           }}
         >
-          <div className="flex items-center gap-8 py-0.5">
-            {scrollingText}
-          </div>
+          {scrollingText}
         </marquee>
       </div>
 
