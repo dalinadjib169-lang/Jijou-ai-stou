@@ -32,8 +32,8 @@ const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "�
 في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
-// Get rotated APi key from Settings in Firestore and dynamic process environment variables
-async function getRotatedApiKey(): Promise<string> {
+// Get all rotated API keys from Settings in Firestore and dynamic process environment variables
+async function getRotatedApiKeys(): Promise<string[]> {
   const candidateKeys: string[] = [];
 
   // 1. Gather any environment variables starting with AIzaSy (covers any custom Vercel or environment names)
@@ -83,13 +83,7 @@ async function getRotatedApiKey(): Promise<string> {
     candidateKeys.push(defaultKey);
   }
 
-  if (candidateKeys.length > 0) {
-    const randomIndex = Math.floor(Math.random() * candidateKeys.length);
-    console.log(`[Key Rotation] Selected key index ${randomIndex + 1}/${candidateKeys.length}`);
-    return candidateKeys[randomIndex];
-  }
-
-  return "";
+  return Array.from(new Set(candidateKeys)).filter(Boolean);
 }
 
 // API Health Check
@@ -106,67 +100,100 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
       return res.status(400).json({ error: "Message or base64 image is required" });
     }
 
-    const apiKey = await getRotatedApiKey();
-    if (!apiKey) {
+    const allKeys = await getRotatedApiKeys();
+    if (allKeys.length === 0) {
       return res.status(500).json({ 
-        error: "مفتاح API الخاص بـ Gemini غير متوفر. يرجى إضافته من لوحة التحكم للأستاذ." 
+        error: "مفاتيح API الخاصة بـ Gemini غير متوفرة. يرجى إضافتها من لوحة التحكم للأستاذ." 
       });
     }
 
-    const ai = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        }
-      }
-    });
+    // Shuffle keys for uniform hits distribution
+    const shuffledKeys = [...allKeys].sort(() => Math.random() - 0.5);
+    let lastError: any = null;
+    let replyText = "";
 
-    // Construct chat content history conforming to contents parameter
-    const contents: any[] = [];
+    // Loop through keys and try them in randomized sequence
+    for (let i = 0; i < shuffledKeys.length; i++) {
+      const activeKey = shuffledKeys[i];
+      console.log(`[Server Key Rotation] Attempting key ${i + 1}/${shuffledKeys.length}: ${activeKey.substring(0, 10)}...`);
 
-    // Map history to Google GenAI structure
-    if (Array.isArray(history)) {
-      history.forEach((turn: any) => {
-        contents.push({
-          role: turn.role === "assistant" ? "model" : "user",
-          parts: [{ text: turn.text }]
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: activeKey,
+          httpOptions: {
+            headers: {
+              "User-Agent": "aistudio-build",
+            }
+          }
         });
-      });
-    }
 
-    // New Turn Parts
-    const newParts: any[] = [];
-    if (base64Image) {
-      newParts.push({
-        inlineData: {
-          mimeType: mimeType || "image/jpeg",
-          data: base64Image
+        // Construct chat content history conforming to contents parameter
+        const contents: any[] = [];
+
+        // Map history to Google GenAI structure
+        if (Array.isArray(history)) {
+          history.forEach((turn: any) => {
+            contents.push({
+              role: turn.role === "assistant" ? "model" : "user",
+              parts: [{ text: turn.text }]
+            });
+          });
         }
+
+        // New Turn Parts
+        const newParts: any[] = [];
+        if (base64Image) {
+          newParts.push({
+            inlineData: {
+              mimeType: mimeType || "image/jpeg",
+              data: base64Image
+            }
+          });
+        }
+        if (message) {
+          newParts.push({ text: message });
+        } else {
+          newParts.push({ text: "قم بتحليل هذه الصورة الرياضية وشرحها بالتفصيل خطوة بخطوة." });
+        }
+
+        contents.push({
+          role: "user",
+          parts: newParts
+        });
+
+        // Generate output
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature: 0.75,
+          }
+        });
+
+        const textOutput = response.text || "";
+        if (textOutput) {
+          replyText = textOutput;
+          lastError = null;
+          break; // Key succeeded! Stop rotation.
+        } else {
+          throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
+        }
+
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Server Key Rotation] Key ${i + 1}/${shuffledKeys.length} failed with error: "${err?.message || err}". Trying next key in sequence...`);
+        // Continue to check the next key in the loop
+        continue;
+      }
+    }
+
+    if (lastError || !replyText) {
+      return res.status(500).json({
+        error: lastError?.message || "فشلت جميع مفاتيح الـ API المدورة في جلب الإجابة من خوادم الذكاء الاصطناعي لجوجل."
       });
     }
-    if (message) {
-      newParts.push({ text: message });
-    } else {
-      newParts.push({ text: "قم بتحليل هذه الصورة الرياضية وشرحها بالتفصيل خطوة بخطوة." });
-    }
 
-    contents.push({
-      role: "user",
-      parts: newParts
-    });
-
-    // Generate output
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.75,
-      }
-    });
-
-    const replyText = response.text || "لم أتمكن من صياغة إجابة، أرجو المحاولة مجدداً.";
     res.json({ reply: replyText });
 
   } catch (error: any) {

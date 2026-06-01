@@ -106,13 +106,8 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
       cleanKeys = rawKeys.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
     }
 
-    let activeKey = "";
-    if (cleanKeys.length > 0) {
-      const randomIndex = Math.floor(Math.random() * cleanKeys.length);
-      activeKey = cleanKeys[randomIndex];
-    }
-    
-    if (!activeKey) {
+    // Try loading fallback from localStorage
+    if (cleanKeys.length === 0) {
       try {
         const stored = localStorage.getItem("dali_apiKeys");
         if (stored) {
@@ -123,7 +118,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
               cleanStored = parsed.map(k => String(k).trim()).filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes("...") && !k.includes("…") && !k.includes("."));
             }
             if (cleanStored.length > 0) {
-              activeKey = cleanStored[Math.floor(Math.random() * cleanStored.length)];
+              cleanKeys = cleanStored;
             }
           }
         }
@@ -132,40 +127,50 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
       }
     }
 
-    if (!activeKey) {
-      throw new Error("لا توجد مفاتيح Gemini API مضافة حالياً في لوحة التحكم. يرجى من الأستاذ تسجيل الدخول وإضافة مفتاح لتأمين الخدمة.");
+    if (cleanKeys.length === 0) {
+      throw new Error("لا توجد مصفوفة مفاتيح Gemini API مضافة حالياً في لوحة التحكم. يرجى من الأستاذ تسجيل الدخول وإضافة مفتاح لتأمين الخدمة.");
     }
 
-    // 2. Format request body conformant to Google REST format
-    const formattedContents: any[] = [];
-    history.forEach((turn) => {
-      formattedContents.push({
-        role: turn.role === "assistant" ? "model" : "user",
-        parts: [{ text: turn.text }]
-      });
-    });
+    // Shuffle keys to distribute hits evenly across rotated keys
+    const shuffledKeys = [...cleanKeys].sort(() => Math.random() - 0.5);
+    let lastErrorMsg = "";
 
-    const newParts: any[] = [];
-    if (base64Image) {
-      newParts.push({
-        inlineData: {
-          mimeType: mimeType || "image/jpeg",
-          data: base64Image
+    // Loop through shuffled keys and try each one until one succeeds
+    for (let i = 0; i < shuffledKeys.length; i++) {
+      const activeKey = shuffledKeys[i];
+      console.log(`[Direct Key Rotation] Attempting key ${i + 1}/${shuffledKeys.length}: ${activeKey.substring(0, 10)}...`);
+
+      try {
+        // 2. Format request body conformant to Google REST format
+        const formattedContents: any[] = [];
+        history.forEach((turn) => {
+          formattedContents.push({
+            role: turn.role === "assistant" ? "model" : "user",
+            parts: [{ text: turn.text }]
+          });
+        });
+
+        const newParts: any[] = [];
+        if (base64Image) {
+          newParts.push({
+            inlineData: {
+              mimeType: mimeType || "image/jpeg",
+              data: base64Image
+            }
+          });
         }
-      });
-    }
-    if (text) {
-      newParts.push({ text: text });
-    } else {
-      newParts.push({ text: "قم بتحليل هذه الصورة الرياضية وشرحها بالتفصيل خطوة بخطوة." });
-    }
+        if (text) {
+          newParts.push({ text: text });
+        } else {
+          newParts.push({ text: "قم بتحليل هذه الصورة الرياضية وشرحها بالتفصيل خطوة بخطوة." });
+        }
 
-    formattedContents.push({
-      role: "user",
-      parts: newParts
-    });
+        formattedContents.push({
+          role: "user",
+          parts: newParts
+        });
 
-    const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ مادة الرياضيات القدير والمبرمج بالذكاء الاصطناعي من الجزائر.
+        const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ مادة الرياضيات القدير والمبرمج بالذكاء الاصطناعي من الجزائر.
 شخصيتك وعقليتك جزائرية مسلمة، طيبة، مشجعة وسلسة وممتعة.
 استخدم عبارات جزائرية وطنية ودينية محببة ووقورة بشكل متوازن وبسيط (مثل: "خويا"، "أختي"، "أهلاً بيك"، "صلي على محمد وجي تتبعني خطوة بخطوة"، "وحد الله وتبع معايا راني هنا لخدمتك"، "هذا سؤال مليح ياسر يعطيك الصحة"، "بارك الله فيك"، "هذا خطأ ما تزيدش تعاودو معليش ذرك تفهمو"، "ربي يبارك فيك الحمد لله كي وضحتلك الفكرة").
 طريقة الشرح: يجب أن يكون الشرح تدريجياً، مبسطاً وممنهجاً ومفهومًا جدًا للطالب الجزائري والعربي.
@@ -173,56 +178,63 @@ export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }
 في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
-    // Use current recommended gemini-3.5-flash model
-    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
-    
-    const apiResponse = await fetch(apiEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        contents: formattedContents,
-        systemInstruction: {
-          parts: [{ text: SYSTEM_INSTRUCTION }]
-        },
-        generationConfig: {
-          temperature: 0.75
-        }
-      })
-    });
+        // Use current recommended gemini-3.5-flash model
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
+        
+        const apiResponse = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: formattedContents,
+            systemInstruction: {
+              parts: [{ text: SYSTEM_INSTRUCTION }]
+            },
+            generationConfig: {
+              temperature: 0.75
+            }
+          })
+        });
 
-    if (!apiResponse.ok) {
-      let errMessage = `فشل الاتصال المباشر بخوادم جوجل (كود الحالة: ${apiResponse.status})`;
-      try {
-        const errBody = await apiResponse.json();
-        if (errBody?.error?.message) {
-          errMessage = `حدث خطأ من خوادم الذكاء الاصطناعي لجوجل: ${errBody.error.message}`;
-        }
-      } catch (e) {
-        try {
-          const textExcerpt = await apiResponse.text();
-          if (textExcerpt) {
-            errMessage = `استجابة غير صالحة من الشبكة: ${textExcerpt.substring(0, 120)}`;
+        if (!apiResponse.ok) {
+          let errMessage = `فشل الاتصال المباشر بخوادم جوجل (كود الحالة: ${apiResponse.status})`;
+          try {
+            const errBody = await apiResponse.json();
+            if (errBody?.error?.message) {
+              errMessage = `${errBody.error.message}`;
+            }
+          } catch (e) {
+            try {
+              const textExcerpt = await apiResponse.text();
+              if (textExcerpt) {
+                errMessage = `استجابة غير صالحة من الشبكة: ${textExcerpt.substring(0, 120)}`;
+              }
+            } catch (_) {}
           }
-        } catch (_) {}
+          throw new Error(errMessage);
+        }
+
+        const resJson = await apiResponse.json();
+        const resultText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!resultText) {
+          throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
+        }
+
+        // Successfully got a response, return it directly!
+        console.log(`[Direct Key Rotation] Key succeeded!`);
+        return resultText;
+
+      } catch (keyErr: any) {
+        lastErrorMsg = keyErr.message || String(keyErr);
+        console.warn(`[Direct Key Rotation] Key ${i + 1}/${shuffledKeys.length} failed with error: "${lastErrorMsg}". Trying next key in list...`);
+        // Continue to check the next key
+        continue;
       }
-      throw new Error(errMessage);
     }
 
-    let resJson;
-    try {
-      resJson = await apiResponse.json();
-    } catch (e) {
-      throw new Error("فشل في تحليل الرد الوارد من خوادم الذكاء الاصطناعي بصيغة JSON. يرجى إعادة المحاولة.");
-    }
-
-    const resultText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) {
-      throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
-    }
-
-    return resultText;
+    // If loop finished, all keys failed
+    throw new Error(lastErrorMsg || "فشلت جميع مفاتيح الـ API المدورة في جلب الإجابة من خوادم الذكاء الاصطناعي لجوجل.");
   };
 
   // Send Message implementation

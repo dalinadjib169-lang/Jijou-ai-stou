@@ -199,7 +199,7 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
 
     try {
       if (user) {
-        // Authorized user attempts direct Firebase sync
+        // Authorized user attempts direct Firebase sync with automatic 4-second network timeout to prevent infinite UI loading states
         const docRef = doc(db, "settings", "dali");
         const uploadPayload = {
           profileImageUrl: targetImg,
@@ -207,7 +207,13 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
           apiKeys: keysList
         };
 
-        await setDoc(docRef, uploadPayload);
+        const savePromise = setDoc(docRef, uploadPayload);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("تباطؤ أو انقطاع في الاستجابة السحابية (Timeout)")), 4000)
+        );
+
+        await Promise.race([savePromise, timeoutPromise]);
+
         setSaveSuccess(true);
         setTimeout(() => {
           setSaveSuccess(false);
@@ -221,12 +227,12 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
         alert("✓ تم حفظ وتطبيق صورتك الشخصية والرسالة بنجاح محلياً في جهازك الحالي! لمزامنتها سحابياً لجميع الطلاب، تفضل بتسجيل الدخول كأستاذ.");
       }
     } catch (err: any) {
-      console.warn("Firestore writing is locked, saved configurations locally inside modern LocalStorage fallback:", err);
+      console.warn("Firestore writing is locked or timed out, saved configurations locally inside modern LocalStorage fallback:", err);
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
       }, 4000);
-      alert("✓ تم حفظ البيانات وتطبيقها محلياً في متصفحك بنجاح! وسوف تظل مطبقة وتعمل فوراً، لكن تعذر الحفظ السحابي المركزي بسبب غياب صلاحيات الكتابة المباشرة.");
+      alert("✓ تم حفظ البيانات وتطبيقها محلياً في متصفحك بنجاح! وسوف تظل مطبقة وتعمل فوراً، لكن تعذر الحفظ السحابي المركزي بسبب غياب صلاحيات الكتابة المباشرة أو بطء الاتصال بالخادم السحابي لجميع الطلاب.");
     } finally {
       setIsSaving(false);
     }
