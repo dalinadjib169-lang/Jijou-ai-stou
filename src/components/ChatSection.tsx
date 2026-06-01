@@ -7,9 +7,10 @@ import { Message } from "../types";
 interface ChatSectionProps {
   welcomeMessage: string;
   profileImageUrl: string;
+  apiKeys?: string[];
 }
 
-export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSectionProps) {
+export default function ChatSection({ welcomeMessage, profileImageUrl, apiKeys }: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMsg, setInputMsg] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -25,13 +26,7 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Quick Math interactive prompts
-  const suggestedPrompts = [
-    "ممكن تشرح لي مبرهنة القيم المتوسطة ببساطة؟",
-    "كيفاش نلقى المستقيم المقارب المائل لدالة ناطقة؟",
-    "عندي دالة أسية، عاوني ندرس نهاياتها عند المالانهاية.",
-    "اشرح لي إشارة المشتقة وعلاقتها بجدول التغيرات."
-  ];
+
 
   // Scroll to bottom
   const scrollToBottom = () => {
@@ -95,6 +90,109 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
     return null;
   };
 
+  // Web-direct client-side Google API fetch fallback if backend fails (e.g. deployed on static Vercel)
+  const callGeminiDirectlyFromBrowser = async (
+    text: string,
+    history: {role: string; text: string}[],
+    base64Image?: string | null,
+    mimeType?: string | null
+  ): Promise<string> => {
+    // 1. Load active rotated API keys
+    const keysArray = apiKeys || [];
+    let activeKey = "";
+    
+    if (keysArray.length > 0) {
+      const randomIndex = Math.floor(Math.random() * keysArray.length);
+      activeKey = keysArray[randomIndex].trim();
+    }
+    
+    if (!activeKey) {
+      try {
+        const stored = localStorage.getItem("dali_apiKeys");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            activeKey = parsed[Math.floor(Math.random() * parsed.length)].trim();
+          }
+        }
+      } catch (e) {
+        console.error("Local load key error:", e);
+      }
+    }
+
+    if (!activeKey) {
+      throw new Error("لا توجد مفاتيح Gemini API مضافة حالياً في لوحة التحكم. يرجى من الأستاذ تسجيل الدخول وإضافة مفتاح لتأمين الخدمة.");
+    }
+
+    // 2. Format request body conformant to Google REST format
+    const formattedContents: any[] = [];
+    history.forEach((turn) => {
+      formattedContents.push({
+        role: turn.role === "assistant" ? "model" : "user",
+        parts: [{ text: turn.text }]
+      });
+    });
+
+    const newParts: any[] = [];
+    if (base64Image) {
+      newParts.push({
+        inlineData: {
+          mimeType: mimeType || "image/jpeg",
+          data: base64Image
+        }
+      });
+    }
+    if (text) {
+      newParts.push({ text: text });
+    } else {
+      newParts.push({ text: "قم بتحليل هذه الصورة الرياضية وشرحها بالتفصيل خطوة بخطوة." });
+    }
+
+    formattedContents.push({
+      role: "user",
+      parts: newParts
+    });
+
+    const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ مادة الرياضيات القدير والمبرمج بالذكاء الاصطناعي من الجزائر.
+شخصيتك وعقليتك جزائرية مسلمة، طيبة، مشجعة وسلسة وممتعة.
+استخدم عبارات جزائرية وطنية ودينية محببة ووقورة بشكل متوازن وبسيط (مثل: "خويا"، "أختي"، "أهلاً بيك"، "صلي على محمد وجي تتبعني خطوة بخطوة"، "وحد الله وتبع معايا راني هنا لخدمتك"، "هذا سؤال مليح ياسر يعطيك الصحة"، "بارك الله فيك"، "هذا خطأ ما تزيدش تعاودو معليش ذرك تفهمو"، "ربي يبارك فيك الحمد لله كي وضحتلك الفكرة").
+طريقة الشرح: يجب أن يكون الشرح تدريجياً، مبسطاً وممنهجاً ومفهومًا جدًا للطالب الجزائري والعربي.
+في نهاية كل شرح أو إجابة، اطرح سؤالاً اختبارياً قصيراً جداً يتعلق بما شرحته للتو لتقييم فهم الطالب وتشجيعه على المحاولة.
+في نهاية كل رسالة تماماً دون استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
+"- لا تنسونا من صالح دعائكم".`;
+
+    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    
+    const apiResponse = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: formattedContents,
+        systemInstruction: {
+          parts: [{ text: SYSTEM_INSTRUCTION }]
+        },
+        generationConfig: {
+          temperature: 0.75
+        }
+      })
+    });
+
+    if (!apiResponse.ok) {
+      const errBody = await apiResponse.json().catch(() => ({}));
+      throw new Error(errBody?.error?.message || `فشل الاتصال المباشر بخوادم جوجل (كود الخطأ: ${apiResponse.status})`);
+    }
+
+    const resJson = await apiResponse.json();
+    const resultText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!resultText) {
+      throw new Error("لم نتمكن من الحصول على رد صحيح من نموذج الذكاء الاصطناعي.");
+    }
+
+    return resultText;
+  };
+
   // Send Message implementation
   const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || inputMsg;
@@ -113,7 +211,6 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
     setInputMsg("");
     setIsSending(true);
 
-    // Copying image states and cleaning previews to keep viewport clean
     const currentBase64 = selectedImageBase64;
     const currentMime = selectedImageMime;
 
@@ -136,6 +233,25 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
         })
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || (contentType && contentType.includes("text/html"))) {
+        console.warn("Backend unavailable/html error page returned. Falling back directly to client-side Google API...");
+        const reply = await callGeminiDirectlyFromBrowser(
+          textToSend,
+          messages.map(m => ({ role: m.sender, text: m.text })),
+          currentBase64,
+          currentMime
+        );
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: "assistant",
+          text: reply,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
+      }
+
       const resData = await response.json();
       if (response.ok) {
         const assistantMessage: Message = {
@@ -149,14 +265,31 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
         throw new Error(resData.error || "عذراً، فشل في جلب الإجابة.");
       }
     } catch (err: any) {
-      console.error(err);
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "assistant",
-        text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${err.message}". أعد المحاولة وسأوضح لك كل شيء بالتفصيل. صلي على محمد ووحد الله.`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      console.warn("Retrying with client-side Google Gemini API fallback...", err);
+      try {
+        const reply = await callGeminiDirectlyFromBrowser(
+          textToSend,
+          messages.map(m => ({ role: m.sender, text: m.text })),
+          currentBase64,
+          currentMime
+        );
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: "assistant",
+          text: reply,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } catch (fallbackErr: any) {
+        console.error("Direct fallback also failed:", fallbackErr);
+        const errorMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: "assistant",
+          text: `يا بني، حدثت مشكلة تقنية صغيرة معي: "${fallbackErr.message}". أعد المحاولة وسأوضح لك كل شيء بالتفصيل. صلي على محمد ووحد الله.`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMsg]);
+      }
     } finally {
       setIsSending(false);
     }
@@ -224,26 +357,8 @@ export default function ChatSection({ welcomeMessage, profileImageUrl }: ChatSec
               </div>
             </div>
 
-            {/* Suggested Prompt Pills */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block text-right pr-2">
-                🎯 أسئلة شائعة لبداية الشرح:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-right">
-                {suggestedPrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-350 hover:text-white p-3 rounded-xl border border-slate-805 text-right transition-all duration-200 leading-relaxed shadow-sm active:scale-98"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <p className="text-[11px] text-slate-400">
-              صلي على محمد، وحّد الله، واكتشف شرح الأستاذ دالي المبسط خطوة بخطوة!
+            <p className="text-[12px] text-slate-400">
+              صلي على محمد، وحّد الله، واكتشف شرح الأستاذ دالي المبسط خطوة بخطوة! اكتب سؤالك أو مشكلتك الرياضية بالأسفل وسيتكفل الأستاذ بالشرح المفصل.
             </p>
           </div>
         ) : (

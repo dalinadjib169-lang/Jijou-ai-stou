@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sunrise, Sunset, Moon, Heart, Sparkles, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { Sunrise, Sunset, Moon, Heart, Sparkles, Pause, Play } from "lucide-react";
 
 interface DhikrItem {
   text: string;
@@ -39,7 +39,7 @@ const DHIKR_DATA: DhikrItem[] = [
 
 export default function DhikrTicker() {
   const [selectedCategory, setSelectedCategory] = useState<"morning" | "evening" | "sleep" | "general" | "all">("all");
-  const [tickerSpeed, setTickerSpeed] = useState<number>(3); // speed coefficient
+  const [tickerSpeed, setTickerSpeed] = useState<number>(1); // default slow and peaceful speed
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
   // Filter based on selected tab
@@ -57,7 +57,7 @@ export default function DhikrTicker() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPaused(!isPaused)}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/40 transition-colors"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/40 transition-colors cursor-pointer"
             title={isPaused ? "تشغيل الشريط" : "إيقاف مؤقت للشريط"}
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -80,7 +80,7 @@ export default function DhikrTicker() {
         <div className="flex flex-wrap items-center gap-1.5 select-none text-xs justify-end">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
               selectedCategory === "all"
                 ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
@@ -90,7 +90,7 @@ export default function DhikrTicker() {
           </button>
           <button
             onClick={() => setSelectedCategory("morning")}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
               selectedCategory === "morning"
                 ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
@@ -101,7 +101,7 @@ export default function DhikrTicker() {
           </button>
           <button
             onClick={() => setSelectedCategory("evening")}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
               selectedCategory === "evening"
                 ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
@@ -112,7 +112,7 @@ export default function DhikrTicker() {
           </button>
           <button
             onClick={() => setSelectedCategory("sleep")}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
               selectedCategory === "sleep"
                 ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
@@ -123,7 +123,7 @@ export default function DhikrTicker() {
           </button>
           <button
             onClick={() => setSelectedCategory("general")}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
               selectedCategory === "general"
                 ? "bg-emerald-600 text-white shadow shadow-emerald-700/20"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-705/30"
@@ -149,42 +149,45 @@ export default function DhikrTicker() {
         
         <style>{`
           @keyframes marquee-dz {
-            0% { transform: translate3d(50%, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
+            0% { transform: translate3d(-50%, 0, 0); }
+            100% { transform: translate3d(0%, 0, 0); }
           }
           .custom-marquee-scroll {
             display: flex;
             width: max-content;
-            animation: marquee-dz var(--marquee-duration, 50s) linear infinite;
+            animation: marquee-dz var(--marquee-duration, 160s) linear infinite;
             animation-play-state: var(--marquee-play-state, running);
           }
           .custom-marquee-scroll:hover {
             animation-play-state: paused;
           }
         `}</style>
-        
+
         <div className="w-full overflow-hidden">
           <div 
             className="custom-marquee-scroll flex items-center whitespace-nowrap"
             style={{
-              "--marquee-duration": `${65 / (tickerSpeed || 3)}s`,
+              "--marquee-duration": `${180 / (tickerSpeed || 1)}s`,
               "--marquee-play-state": isPaused ? "paused" : "running"
             } as React.CSSProperties}
           >
-            <div className="flex items-center gap-6 shrink-0 pl-8">
-              {filteredDhikr.map((item, idx) => (
-                <span key={`ticker-item-${idx}`} className="inline-flex items-center mx-3 text-slate-100 font-medium">
-                  <span className="text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full text-[10px] font-bold ml-2.5 border border-emerald-900/50">
-                    {item.category === "morning" && "صباح"}
-                    {item.category === "evening" && "مساء"}
-                    {item.category === "sleep" && "نوم"}
-                    {item.category === "general" && "ذكر"}
+            {/* Render 4 copies side-by-side to allow seamless continuous wrap-around without empty space */}
+            {[1, 2, 3, 4].map((trackNo) => (
+              <div key={`track-no-${trackNo}`} className="flex items-center gap-6 shrink-0 pl-8">
+                {filteredDhikr.map((item, idx) => (
+                  <span key={`ticker-item-${trackNo}-${idx}`} className="inline-flex items-center mx-3 text-slate-100 font-medium select-none">
+                    <span className="text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full text-[10px] font-bold ml-2.5 border border-emerald-900/50">
+                      {item.category === "morning" && "صباح"}
+                      {item.category === "evening" && "مساء"}
+                      {item.category === "sleep" && "نوم"}
+                      {item.category === "general" && "ذكر"}
+                    </span>
+                    <span className="text-xs sm:text-sm tracking-wide leading-relaxed font-sans">{item.text}</span>
+                    <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 mr-4 shrink-0 animate-pulse" />
                   </span>
-                  <span className="text-xs sm:text-sm tracking-wide leading-relaxed font-sans select-none">{item.text}</span>
-                  <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 mr-4 shrink-0 animate-pulse" />
-                </span>
-              ))}
-            </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </div>

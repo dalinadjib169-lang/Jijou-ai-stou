@@ -196,6 +196,7 @@ export default function App() {
             <ChatSection 
               welcomeMessage={welcomeMessage} 
               profileImageUrl={profileImageUrl} 
+              apiKeys={apiKeys}
             />
           )}
 

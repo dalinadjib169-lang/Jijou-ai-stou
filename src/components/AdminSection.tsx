@@ -60,39 +60,54 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
     }
   };
 
-  // Cloudinary profile image direct upload with custom requested endpoint URL
+  // Base64 Reader & Compressor for 100% reliable local image updates
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "ml_default"); // standard Cloudinary unsigned preset
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const SIZE = 120; // 120px is perfect for profile avatar
+          canvas.width = SIZE;
+          canvas.height = SIZE;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            // Draw cropped center square
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, SIZE, SIZE);
+            
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            setProfileImage(dataUrl);
 
-      const res = await fetch("https://api.cloudinary.com/v1_1/doaxziqm7/image/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfileImage(data.secure_url);
-        
-        // Auto-save uploaded image immediately in local storage so they see visual transition instantly!
-        localStorage.setItem("dali_profileImageUrl", data.secure_url);
-        onSettingsUpdated(data.secure_url, welcomeMsg, keysList);
-        
-        alert("✓ تم رفع صورتك الشخصية بنجاح على كلاوديناري الخاص بالأستاذ دالي وسرّبناها إلى متصفحك فورياً!");
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData?.error?.message || "فشل الرفع المباشر.");
-      }
+            // Auto-save uploaded image immediately in local storage so they see visual transition instantly!
+            localStorage.setItem("dali_profileImageUrl", dataUrl);
+            onSettingsUpdated(dataUrl, welcomeMsg, keysList);
+            
+            setUploadLoading(false);
+            alert("✓ تم تحديث وضغط صورتك الشخصية بنجاح فائقة ومعاينتها فورياً في المنصة!");
+          } else {
+            throw new Error("Unable to get canvas context");
+          }
+        };
+        img.onerror = () => {
+          throw new Error("Failed to load image");
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => {
+        throw new Error("Failed to read file");
+      };
+      reader.readAsDataURL(file);
     } catch (err: any) {
-      console.warn("Cloudinary direct upload failed, falling back to manual paste or default:", err);
-      alert(`تنبيه: لتفعيل ميزة الرفع المباشر على Cloudinary يرجى التأكد من إنشاء Preset للرفع غير المُوقع (Unsigned Preset) باسم ml_default داخل لوحة تحكم Cloudinary الخاصة بك. كطريقة بديلة سريعة، يمكنك ببساطة لصق رابط أي صورة مباشرة من الإنترنت في الحقل بالأسفل وسيقوم التطبيق بقبولها فوراً!`);
-    } finally {
+      console.error("Local profile processing failed:", err);
+      alert(`عذراً، فشل تحديث الصورة: ${err.message || err}`);
       setUploadLoading(false);
     }
   };
@@ -288,7 +303,7 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
 
                 <div className="md:col-span-3 space-y-3">
                   <div>
-                    <label className="block text-xs text-slate-455 font-bold mb-1.5 text-right">الرفع المباشر لكلاوديناري (Cloudinary Upload):</label>
+                    <label className="block text-xs text-slate-400 font-bold mb-1.5 text-right">الرفع المباشر وضغط الصورة فورياً (Direct Photo Safe Upload & Compress):</label>
                     <input 
                       type="file"
                       id="profile-upload"
@@ -306,16 +321,16 @@ export default function AdminSection({ onSettingsUpdated, welcomeMessage, profil
                       {uploadLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                          <span>جاري رفع وتحديث صورتك...</span>
+                          <span>جاري معالجة وتحديث صورتك...</span>
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4 text-emerald-400" />
-                          <span>اختر صورة كأيقونة من جهازك للرفع المستمر 🇩🇿</span>
+                          <span>اختر صورة كأيقونة من جهازك للتحديث الفوري 🇩🇿</span>
                         </>
                       )}
                     </button>
-                    <span className="text-[10px] text-slate-500 font-bold block mt-1.5 text-right">مسار doaxziqm7 السحابي الخاص بك</span>
+                    <span className="text-[10px] text-slate-500 font-bold block mt-1.5 text-right">✓ يتم ضغط الصورة تلقائياً محلياً في جهازك لأقل من 10 كيلوبايت لضمان سرعة التحميل القصوى والمزامنة المباشرة.</span>
                   </div>
 
                   <div>
