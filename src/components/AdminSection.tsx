@@ -339,7 +339,7 @@ export default function AdminSection({
             <div className="pt-2">
               <span className="text-slate-400 text-[11px] block mb-2">أو اختبر لتعديل الإعدادات والصور على متصفحك فوراً بدون تسجيل:</span>
               <button
-                onClick={() => setUser({ email: "dalinadjib169@gmail.com_local_mode" } as any)}
+                onClick={() => setUser({ email: "pro_dali_local@dali.dz_local_mode" } as any)}
                 className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-700"
               >
                 ⚙️ الدخول السريع في نمط المعاينة والتحكم المحلي
@@ -348,11 +348,7 @@ export default function AdminSection({
           </div>
           
           <div className="border-t border-slate-800 pt-4 text-[10px] sm:text-xs text-slate-400 leading-relaxed text-right font-medium">
-            🛡️ الحسابات المصرحة للتحكم في الخادم السحابي العام:
-            <ul className="list-disc list-inside mt-1.5 space-y-0.5 font-mono text-slate-550 mr-2 text-right">
-              <li>dalind1990@gmail.com</li>
-              <li>dalinadjib169@gmail.com</li>
-            </ul>
+            🛡️ لوحة التحكم محمية ومشفرة بالكامل لمشرف ومالك المنصة التعليمية للأستاذ دالي نجيب. الولوج متاح فقط للحسابات المصرح لها سحابياً بشكل آمن وسري.
           </div>
         </div>
       ) : (
@@ -372,7 +368,19 @@ export default function AdminSection({
             <div className="flex items-center gap-3 order-1 sm:order-2">
               <div className="text-right">
                 <h4 className="text-white font-black text-base md:text-lg">مرحباً الأستاذ دالي نجيب 🇩🇿</h4>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">{user.email}</p>
+                <p className="text-xs text-emerald-400 font-mono mt-0.5 select-none" dir="ltr">
+                  {user.email ? (
+                    user.email.endsWith("_local_mode") 
+                      ? "المشرف المحلي (نمط المعاينة السري)" 
+                      : (() => {
+                          const parts = user.email.split("@");
+                          if (parts.length === 2 && parts[0].length > 3) {
+                            return `${parts[0].substring(0, 3)}***@${parts[1]}`;
+                          }
+                          return "********@gmail.com";
+                        })()
+                  ) : "********@gmail.com"}
+                </p>
               </div>
               <img 
                 referrerPolicy="no-referrer"

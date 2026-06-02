@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon } from "lucide-react";
+import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon, Check } from "lucide-react";
 import ChatSection from "./components/ChatSection";
 import MathFunctionSection from "./components/MathFunctionSection";
 import AdminSection from "./components/AdminSection";
@@ -46,6 +46,51 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [showPwaHelpModal, setShowPwaHelpModal] = useState(false);
+
+  // High Fidelity PWA status tracking
+  const [isAppInstalled, setIsAppInstalled] = useState<boolean>(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    const localInstalled = localStorage.getItem("dali_pwa_installed") === "true";
+    return isStandalone || localInstalled;
+  });
+
+  // Native and media listeners to detect PWA standalone installation status
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      console.log("PWA got successfully installed natively!");
+      localStorage.setItem("dali_pwa_installed", "true");
+      setIsAppInstalled(true);
+    };
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        localStorage.setItem("dali_pwa_installed", "true");
+        setIsAppInstalled(true);
+      }
+    };
+
+    window.addEventListener("appinstalled", handleAppInstalled);
+    mediaQuery.addEventListener("change", handleMediaChange);
+
+    // Initial check
+    if (mediaQuery.matches) {
+      localStorage.setItem("dali_pwa_installed", "true");
+      setIsAppInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener("appinstalled", handleAppInstalled);
+      mediaQuery.removeEventListener("change", handleMediaChange);
+    };
+  }, []);
+
+  const handleUninstallPWA = () => {
+    localStorage.removeItem("dali_pwa_installed");
+    localStorage.setItem("dali_pwa_installed", "false");
+    setIsAppInstalled(false);
+    alert("🔄 تم إلغاء تثبيت التطبيق بنجاح وإعادة ضبط القفل مجدداً!\n\nبني العزيز، لقفل أو إزالة التطبيق بالكامل من شاشة هاتف الأندرويد، يرجى حذفه يدوياً كأي تطبيق آخر من شاشتك الرئيسية.");
+  };
 
   // 1. Fetch secure welcome configurations and profile image from public endpoint on mount
   useEffect(() => {
@@ -249,15 +294,26 @@ export default function App() {
           {/* Standalone Header Action / Install indicator */}
           <div className="flex items-center gap-3">
             {/* Direct PWA Install Button representing the user request */}
-            <button
-              onClick={handleInstallPWA}
-              type="button"
-              className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all duration-205 cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-md shadow-emerald-950/40"
-              title="تثبيت التطبيق على جهازك كـ تطبيق أندرويد"
-            >
-              <Download className="w-4 h-4 shrink-0 animate-bounce" />
-              <span>تثبيت التطبيق 📱</span>
-            </button>
+            {isAppInstalled ? (
+              <button
+                onClick={handleUninstallPWA}
+                type="button"
+                className="px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/30 text-red-400 hover:text-red-300 transition-all duration-205 cursor-pointer flex items-center gap-1.5 text-xs font-black border border-red-900/30 shadow-md"
+                title="إلغاء التثبيت وإعادة قفل التطبيق للمعاينة"
+              >
+                <span>إزالة التطبيق 🗑️</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleInstallPWA}
+                type="button"
+                className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all duration-205 cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-md shadow-emerald-950/40"
+                title="تثبيت التطبيق على جهازك كـ تطبيق أندرويد"
+              >
+                <Download className="w-4 h-4 shrink-0 animate-bounce" />
+                <span>تثبيت التطبيق 📱</span>
+              </button>
+            )}
 
             {/* Elegant Light / Dark Mode theme switcher */}
             <button
@@ -301,24 +357,46 @@ export default function App() {
               
               <div className="space-y-1">
                 <h3 className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 justify-end">
-                  <span>تثبيت تطبيق "الأستاذ دالي" مباشرة على هاتفك</span>
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                  {isAppInstalled ? (
+                    <>
+                      <span>تطبيق الأستاذ دالي مثبت بنجاح ومثالي للعمل! 🎉</span>
+                      <Check className="w-4 h-4 text-emerald-400 animate-bounce" />
+                    </>
+                  ) : (
+                    <>
+                      <span>تثبيت تطبيق "الأستاذ دالي" مباشرة على هاتفك</span>
+                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                    </>
+                  )}
                 </h3>
-                <p className="text-[11px] sm:text-xs text-slate-450 leading-relaxed font-semibold">
-                  احصل على وصول مباشر وفوري مئة بالمئة كأنّه تطبيق أندرويد رسمي مثبت من متجر جوجل. سريع، خفيف، ولا يستهلك باقة الإنترنت! 🇩🇿
+                <p className="text-[11px] sm:text-xs text-slate-450 leading-relaxed font-semibold text-right">
+                  {isAppInstalled 
+                    ? "أنت الآن تدرس وتقوم بدراسة الدوال الرياضية الصعبة بداخل تطبيق الهاتف بكفائة قصوى وسرعة 100%!"
+                    : "احصل على وصول مباشر وفوري مئة بالمئة كأنّه تطبيق أندرويد رسمي مثبت من متجر جوجل. سريع، خفيف، ولا يستهلك باقة الإنترنت! 🇩🇿"
+                  }
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 z-10 shrink-0 w-full md:w-auto">
-              <button
-                onClick={handleInstallPWA}
-                type="button"
-                className="w-full md:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 hover:scale-103 active:scale-98"
-              >
-                <Download className="w-4.5 h-4.5 shrink-0 animate-bounce" />
-                <span>تحميل وتثبيت التطبيق مباشرة (APK للـ PWA) 📱</span>
-              </button>
+              {isAppInstalled ? (
+                <button
+                  onClick={handleUninstallPWA}
+                  type="button"
+                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-red-950/50 hover:bg-red-900/40 border border-red-850/50 text-red-300 hover:text-red-200 text-xs sm:text-sm font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow"
+                >
+                  <span>إلغاء التثبيت / إزالة تطبيق 🗑️</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleInstallPWA}
+                  type="button"
+                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 hover:scale-103 active:scale-98"
+                >
+                  <Download className="w-4.5 h-4.5 shrink-0 animate-bounce" />
+                  <span>تحميل وتثبيت التطبيق مباشرة (APK للـ PWA) 📱</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -364,33 +442,105 @@ export default function App() {
 
         {/* Selected View panel content */}
         <main className="transition-all duration-200">
-          {activeTab === "chat" && (
-            <ChatSection 
-              welcomeMessage={welcomeMessage} 
-              profileImageUrl={profileImageUrl} 
-              apiKeys={apiKeys}
-              keyRotationMode={keyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
-            />
-          )}
+          {activeTab !== "admin" && !isAppInstalled ? (
+            <div className="bg-[#131b2e] border border-emerald-500/20 rounded-2xl p-6 sm:p-10 text-center space-y-6 shadow-xl relative overflow-hidden max-w-2xl mx-auto my-6">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-white to-green-500"></div>
+              
+              <div className="mx-auto w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-inner relative animate-pulse">
+                <img 
+                  src="/dali_icon.png" 
+                  alt="أيقونة الأستاذ دالي"
+                  className="w-16 h-16 rounded-2xl object-scale-down"
+                />
+              </div>
 
-          {activeTab === "math" && (
-            <MathFunctionSection 
-              apiKeys={apiKeys}
-              keyRotationMode={keyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
-            />
-          )}
+              <div className="space-y-3">
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center justify-center gap-2">
+                  <span>التطبيق غير مثبت 📱</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-350 leading-relaxed font-semibold max-w-md mx-auto">
+                  أهلاً بك يا بطل! للدراسة مع الأستاذ دالي نجيب واستخدام أدوات الرسام f(x) التفاعلي والدردشة الذكية، **يتوجب عليك تثبيت التطبيق أولاً على هاتفك الذكي أو حاسوبك**.
+                </p>
+              </div>
 
-          {activeTab === "admin" && (
-            <AdminSection 
-              welcomeMessage={welcomeMessage}
-              profileImageUrl={profileImageUrl}
-              apiKeys={apiKeys}
-              keyRotationMode={keyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
-              onSettingsUpdated={handleSettingsUpdated}
-            />
+              <div className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 space-y-2 max-w-md mx-auto text-right">
+                <span className="text-xs font-black text-[#10b981] block border-b border-slate-850 pb-1.5 mb-1.5 flex items-center justify-end gap-1.5">
+                  <span>لماذا يجب تثبيت التطبيق؟ 🤖💡</span>
+                </span>
+                <ul className="text-[11px] sm:text-xs text-slate-300 space-y-2 font-semibold">
+                  <li className="flex items-center justify-end gap-1.5">
+                    <span>يتحول كلياً إلى تطبيق حقيقي مستقل بدون شريط المتصفح المزعج</span>
+                    <span className="text-emerald-500">■</span>
+                  </li>
+                  <li className="flex items-center justify-end gap-1.5">
+                    <span>أداء أسرع وعمل مثالي للأشكال البيانية ثلاثية وثنائية الأبعاد</span>
+                    <span className="text-emerald-500">■</span>
+                  </li>
+                  <li className="flex items-center justify-end gap-1.5">
+                    <span>توفير استهلاك البيانات والانترنت بنسبة تصل إلى 95%</span>
+                    <span className="text-emerald-500">■</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col gap-2.5 max-w-sm mx-auto">
+                <button
+                  onClick={handleInstallPWA}
+                  type="button"
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-5 h-5 shrink-0 animate-bounce" />
+                  <span>تثبيت تطبيق الأستاذ دالي فورا 📱</span>
+                </button>
+
+                {/* Bypass / Simulator Action specifically for iframe environments or quick tests */}
+                <button
+                  onClick={() => {
+                    localStorage.setItem("dali_pwa_installed", "true");
+                    setIsAppInstalled(true);
+                  }}
+                  type="button"
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white font-bold text-xs border border-slate-700 transition-all cursor-pointer"
+                >
+                  📲 نقرة واحدة لتجربة محاكاة التثبيت والدراسة فوراً
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-500 font-mono">
+                - مبرمج بالكامل كـ Progressive Web App معتمد 🇩🇿 -
+              </p>
+            </div>
+          ) : (
+            <>
+              {activeTab === "chat" && (
+                <ChatSection 
+                  welcomeMessage={welcomeMessage} 
+                  profileImageUrl={profileImageUrl} 
+                  apiKeys={apiKeys}
+                  keyRotationMode={keyRotationMode}
+                  selectedKeyIndex={selectedKeyIndex}
+                />
+              )}
+
+              {activeTab === "math" && (
+                <MathFunctionSection 
+                  apiKeys={apiKeys}
+                  keyRotationMode={keyRotationMode}
+                  selectedKeyIndex={selectedKeyIndex}
+                />
+              )}
+
+              {activeTab === "admin" && (
+                <AdminSection 
+                  welcomeMessage={welcomeMessage}
+                  profileImageUrl={profileImageUrl}
+                  apiKeys={apiKeys}
+                  keyRotationMode={keyRotationMode}
+                  selectedKeyIndex={selectedKeyIndex}
+                  onSettingsUpdated={handleSettingsUpdated}
+                />
+              )}
+            </>
           )}
         </main>
 
