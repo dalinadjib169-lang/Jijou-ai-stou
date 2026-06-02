@@ -251,10 +251,9 @@ export default function ChatSection({
 4. الخاتمة الدائمة: في نهاية كل رسالة تماماً دون أي استثناء، يجب أن تنهي بعبارتك الدائمة والمميزة:
 "- لا تنسونا من صالح دعائكم".`;
 
-        // Use current recommended gemini-3.5-flash model
-        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
-        
-        const apiResponse = await fetch(apiEndpoint, {
+        // Try gemini-3.5-flash first, fallback to gemini-3.1-flash-lite if overloaded/demand issues
+        let apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
+        let apiResponse = await fetch(apiEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -269,6 +268,36 @@ export default function ChatSection({
             }
           })
         });
+
+        if (!apiResponse.ok) {
+          let errMessage = "";
+          try {
+            const errBody = await apiResponse.json();
+            errMessage = errBody?.error?.message || "";
+          } catch (_) {}
+
+          const isDemandOrQuota = errMessage.includes("demand") || errMessage.includes("quota") || errMessage.includes("overloaded") || errMessage.includes("limit") || errMessage.includes("exhausted") || errMessage.includes("429") || apiResponse.status === 429 || apiResponse.status === 503;
+          
+          if (isDemandOrQuota) {
+            console.log("[ChatSection] Falling back direct call to stable model: gemini-3.1-flash-lite");
+            apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${activeKey}`;
+            apiResponse = await fetch(apiEndpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                contents: formattedContents,
+                systemInstruction: {
+                  parts: [{ text: SYSTEM_INSTRUCTION }]
+                },
+                generationConfig: {
+                  temperature: 0.75
+                }
+              })
+            });
+          }
+        }
 
         if (!apiResponse.ok) {
           let errMessage = `فشل الاتصال المباشر بخوادم جوجل (كود الحالة: ${apiResponse.status})`;

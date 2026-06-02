@@ -30,6 +30,9 @@ export default function MathFunctionSection({
   // AI Full-Study & Ask states
   const [isStudyingByAi, setIsStudyingByAi] = useState(false);
   const [aiStudyResult, setAiStudyResult] = useState<string | null>(null);
+  const [studyFollowUpText, setStudyFollowUpText] = useState("");
+  const [studyFollowUpHistory, setStudyFollowUpHistory] = useState<{ role: "student" | "dali"; text: string }[]>([]);
+  const [isStudyFollowUpLoading, setIsStudyFollowUpLoading] = useState(false);
   const [isAskingAi, setIsAskingAi] = useState(false);
   const [subTab, setSubTab] = useState<"plotter" | "analytical">("plotter");
   
@@ -398,13 +401,36 @@ export default function MathFunctionSection({
     }
   };
 
-  const countParameterSolutions = () => {
+  const countParameterSolutions = (): number => {
     let intersections = 0;
     const step = 0.02;
     let prevDiff = NaN;
 
     for (let x = -10; x <= 10; x += step) {
-      if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.1)  // A helper function that first calls the backend /api/gemini/chat.
+      if (forbiddenValues.some(fV => Math.abs(x - fV) < 0.1)) {
+        prevDiff = NaN;
+        continue;
+      }
+
+      const yVal = evaluateFunc(expression, x);
+      if (isNaN(yVal)) {
+        prevDiff = NaN;
+        continue;
+      }
+
+      const diff = yVal - mValue;
+      if (!isNaN(prevDiff)) {
+        if (prevDiff * diff <= 0) {
+          intersections++;
+        }
+      }
+      prevDiff = diff;
+    }
+
+    return intersections;
+  };
+
+  // A helper function that first calls the backend /api/gemini/chat.
   // If the backend fails, returns a non-JSON or timeout response, or returns an error,
   // it gracefully falls back to direct browser-to-Google Gemini API calling.
   const callGeminiAPI = async (
@@ -519,8 +545,8 @@ export default function MathFunctionSection({
             parts: [{ text: text }]
           });
 
-          const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
-          const apiResponse = await fetch(apiEndpoint, {
+          let apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeKey}`;
+          let apiResponse = await fetch(apiEndpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -535,6 +561,36 @@ export default function MathFunctionSection({
               }
             })
           });
+
+          if (!apiResponse.ok) {
+            let errMessage = "";
+            try {
+              const errBody = await apiResponse.json();
+              errMessage = errBody?.error?.message || "";
+            } catch (_) {}
+
+            const isDemandOrQuota = errMessage.includes("demand") || errMessage.includes("quota") || errMessage.includes("overloaded") || errMessage.includes("limit") || errMessage.includes("exhausted") || errMessage.includes("429") || apiResponse.status === 429 || apiResponse.status === 503;
+            
+            if (isDemandOrQuota) {
+              console.log("[MathSection] Falling back direct call to stable model: gemini-3.1-flash-lite");
+              apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${activeKey}`;
+              apiResponse = await fetch(apiEndpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  contents: formattedContents,
+                  systemInstruction: {
+                    parts: [{ text: SYSTEM_INSTRUCTION }]
+                  },
+                  generationConfig: {
+                    temperature: 0.75
+                  }
+                })
+              });
+            }
+          }
 
           if (!apiResponse.ok) {
             let errMessage = `كود الحالة: ${apiResponse.status}`;
@@ -586,6 +642,8 @@ export default function MathFunctionSection({
   const studyFunctionWithAI = async () => {
     setIsStudyingByAi(true);
     setAiStudyResult(null);
+    setStudyFollowUpHistory([]);
+    setStudyFollowUpText("");
     try {
       const prompt = `أهلاً بك يا أستاذ دالي. أرجو منك دراسة وتحليل الدالة الرياضية التالية دراسة مركزة ومفصلة لباكلوريا الجزائر f(x) = ${expression}.
 يرجى إعطاء شرح مقسم لخطوات واضحة باللغة العربية بأسلوبك الجزائري الودود المحفز (الأستاذ دالي نجيب):
@@ -604,6 +662,47 @@ export default function MathFunctionSection({
       setAiStudyResult(`عذراً، فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي: ${errMsg}. يرجى التحقق من مفتاح API والشبكة.`);
     } finally {
       setIsStudyingByAi(false);
+    }
+  };
+
+  // Follow-up interaction Handler for steps student did not understand
+  const submitStudyFollowUpQuestion = async () => {
+    if (!studyFollowUpText.trim() || !aiStudyResult) return;
+    setIsStudyFollowUpLoading(true);
+    const userQuery = studyFollowUpText;
+    setStudyFollowUpText("");
+
+    // Add local turn
+    const updatedHistory = [...studyFollowUpHistory, { role: "student" as const, text: userQuery }];
+    setStudyFollowUpHistory(updatedHistory);
+
+    // Format for API
+    const formattedHistory = updatedHistory.map(turn => ({
+      role: turn.role === "student" ? "user" : "assistant",
+      text: turn.text
+    }));
+
+    // Include original study result contextualizing
+    const prompt = `نحن بصدد دراسة الدالة الرياضية: f(x) = ${expression}.
+لقد قدمت التقرير التالي لدراسة الدالة مسبقاً:
+"""
+${aiStudyResult}
+"""
+
+التلميذ لديه سؤال أو لم يفهم خطوة معينة في هذا التقرير، ويسألك الآن بالتحديد:
+"${userQuery}"
+
+الرجاء الإجابة والشرح المفصل خطوة بخطوة باللغة العربية بأسلوب الأستاذ دالي الجزائري الودود، الميسّر والبيداغوجي، وصلي على شفيعنا محمد صلى الله عليه وسلم.`;
+
+    try {
+      const reply = await callGeminiAPI(prompt, formattedHistory);
+      setStudyFollowUpHistory(prev => [...prev, { role: "dali" as const, text: reply }]);
+    } catch (error: any) {
+      console.error(error);
+      const errMsg = error?.message || String(error);
+      setStudyFollowUpHistory(prev => [...prev, { role: "dali" as const, text: `عذراً بني، حدث خطأ أثناء الاتصال بالذكاء الاصطناعي للأستاذ دالي: ${errMsg}` }]);
+    } finally {
+      setIsStudyFollowUpLoading(false);
     }
   };
 
@@ -757,82 +856,8 @@ f(x) = ${expression}
     } finally {
       setIsDialogueLoading(false);
     }
-  };� تبسيط ونُصح تربوي:** بخصوص إشارة المشتقة وأهمية كتابتها بطريقة واضحة في البكالوريا مع الصلاة على محمد وعائلته الشريفة.`;
-
-    try {
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: prompt,
-          keyRotationMode,
-          selectedKeyIndex
-        }),
-      });
-      const data = await response.json();
-      if (data.reply) {
-        setDerivExplanation(data.reply);
-      } else if (data.error) {
-        setDerivExplanation(`عذراً، حدث خطأ: ${data.error}`);
-      } else {
-        setDerivExplanation("لم أستطع حساب المشتقة حالياً بني، حاول ثانية والصلاة والسلام على رسول الله.");
-      }
-    } catch (error: any) {
-      console.error(error);
-      setDerivExplanation(`فشل شرح المشتقة: ${error?.message || error}`);
-    } finally {
-      setIsExplainingDeriv(false);
-    }
   };
 
-  // Helper to interactive dialogue with Professor Dali
-  const askDaliDialogue = async (predefQuery?: string) => {
-    const queryToUse = predefQuery || dialogueQuery;
-    if (!queryToUse.trim()) return;
-
-    setIsDialogueLoading(true);
-    setDialogueQuery("");
-    // Add student turn locally
-    const updatedHistory = [...dialogueHistory, { role: "student" as const, text: queryToUse }];
-    setDialogueHistory(updatedHistory);
-
-    const formattedHistory = updatedHistory.map(turn => ({
-      role: turn.role === "student" ? "user" : "assistant",
-      text: turn.text
-    }));
-
-    const prompt = `أنت هو الأستاذ دالي نجيب لولاية الجزائر، معلم مبسط ومحبوب في الرياضيات لطلاب البكالوريا ومطور ذكاء اصطناعي.
-نحن بصدد دراسة الدالة: f(x) = ${expression}
-
-التلميذ يشارك ويتحاور معك ثنائياً ويسألك الآن لكي تفهمه خطوة بخطوة: "${queryToUse}"
-جاوبه بأسلوبك البيداغوجي المبهج، والأخوي والوقور لتسهيل استيعابه وجبر خاطره، مستعملاً كلمات تشجيعية دافئة، وصلي على شفيعنا محمد في البداية والنهاية.`;
-
-    try {
-      const response = await fetch("/api/gemini/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: prompt,
-          history: formattedHistory,
-          keyRotationMode,
-          selectedKeyIndex
-        }),
-      });
-      const data = await response.json();
-      if (data.reply) {
-        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: data.reply }]);
-      } else if (data.error) {
-        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: `لقد حدث خطأ في التواصل بني: ${data.error}` }]);
-      } else {
-        setDialogueHistory(prev => [...prev, { role: "dali" as const, text: "لم أسمعك جيداً بني بسبب انقطاع مؤقت في الشبكة. المرجو إعادة صياغة سؤالك وصلي على رسول الله." }]);
-      }
-    } catch (error) {
-      console.error(error);
-      setDialogueHistory(prev => [...prev, { role: "dali" as const, text: "حدث خطأ غير متوقع بني، تأكد من مفاتيح الـ API المعتمدة والاتصال بالإنترنت!" }]);
-    } finally {
-      setIsDialogueLoading(false);
-    }
-  };
 
   // Generate interactive values for the Variation Table
   const generateVariationTableData = () => {
@@ -951,6 +976,65 @@ f(x) = ${expression}
                   <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
                     {aiStudyResult}
                   </div>
+                  
+                  {/* Interactive Student Follow-up Question Panel */}
+                  <div className="border-t border-slate-700/50 pt-3 mt-4 space-y-3">
+                    <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800 text-right">
+                      <p className="text-xs font-bold text-amber-300 flex items-center justify-end gap-1 mb-2">
+                        <span>هل هناك خطوة لم تفهمها في دراسة الدالة؟ اسأل الأستاذ دالي مباشرة:</span>
+                        <QuestionIcon className="w-4 h-4 text-amber-300" />
+                      </p>
+
+                      {/* Follow-up chat messages */}
+                      {studyFollowUpHistory.length > 0 && (
+                        <div className="space-y-3 max-h-64 overflow-y-auto mb-3 p-2 bg-slate-950/40 rounded-lg scrollbar-thin">
+                          {studyFollowUpHistory.map((msg, index) => (
+                            <div key={index} className={`flex flex-col ${msg.role === "student" ? "items-start" : "items-end"} gap-1`}>
+                              <span className="text-[10px] text-slate-400 font-bold px-1">
+                                {msg.role === "student" ? "أنت (التلميذ) 👤" : "الأستاذ دالي 🎓"}
+                              </span>
+                              <div className={`p-2.5 rounded-xl text-xs max-w-[85%] leading-relaxed ${
+                                msg.role === "student" 
+                                  ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
+                                  : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Question input field and submit buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={submitStudyFollowUpQuestion}
+                          disabled={isStudyFollowUpLoading || !studyFollowUpText.trim()}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        >
+                          {isStudyFollowUpLoading ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <CornerDownLeft className="w-3.5 h-3.5" />
+                          )}
+                          <span>إرسال السؤال</span>
+                        </button>
+                        <input
+                          type="text"
+                          value={studyFollowUpText}
+                          onChange={(e) => setStudyFollowUpText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              submitStudyFollowUpQuestion();
+                            }
+                          }}
+                          placeholder="مثال: لم أفهم كيف وجدت معادلة المماس، أرجو التوضيح..."
+                          className="flex-1 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg px-3 py-2 text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex justify-between items-center border-t border-slate-700/45 pt-2 text-[10px] text-slate-400">
                     <span>صانع الأجيال دالي نجيب 🎓</span>
                     <button 
@@ -1308,10 +1392,10 @@ f(x) = ${expression}
 
               {aiStudyResult && (
                 <div className="bg-slate-950 text-right p-4 rounded-xl border border-emerald-500/35 shadow-inner space-y-3 mt-4">
-                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border border-slate-800/80">
+                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border border-slate-800/80 font-sans">
                     <button 
                       onClick={() => setAiStudyResult(null)}
-                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-755 px-2 py-0.5 rounded cursor-pointer font-sans"
+                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-755 px-2 py-0.5 rounded cursor-pointer"
                     >
                       إغلاق ✕
                     </button>
@@ -1322,6 +1406,64 @@ f(x) = ${expression}
                   </div>
                   <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
                     {aiStudyResult}
+                  </div>
+
+                  {/* Interactive Student Follow-up Question Panel */}
+                  <div className="border-t border-slate-700/50 pt-3 mt-4 space-y-3">
+                    <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800 text-right">
+                      <p className="text-xs font-bold text-amber-300 flex items-center justify-end gap-1 mb-2">
+                        <span>هل هناك خطوة لم تفهمها في دراسة الدالة؟ اسأل الأستاذ دالي مباشرة:</span>
+                        <QuestionIcon className="w-4 h-4 text-amber-300" />
+                      </p>
+
+                      {/* Follow-up chat messages */}
+                      {studyFollowUpHistory.length > 0 && (
+                        <div className="space-y-3 max-h-64 overflow-y-auto mb-3 p-2 bg-slate-950/40 rounded-lg scrollbar-thin">
+                          {studyFollowUpHistory.map((msg, index) => (
+                            <div key={index} className={`flex flex-col ${msg.role === "student" ? "items-start" : "items-end"} gap-1`}>
+                              <span className="text-[10px] text-slate-400 font-bold px-1 font-sans">
+                                {msg.role === "student" ? "أنت (التلميذ) 👤" : "الأستاذ دالي 🎓"}
+                              </span>
+                              <div className={`p-2.5 rounded-xl text-xs max-w-[85%] leading-relaxed ${
+                                msg.role === "student" 
+                                  ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
+                                  : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Question input field and submit buttons */}
+                      <div className="flex gap-2 font-sans">
+                        <button
+                          onClick={submitStudyFollowUpQuestion}
+                          disabled={isStudyFollowUpLoading || !studyFollowUpText.trim()}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        >
+                          {isStudyFollowUpLoading ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <CornerDownLeft className="w-3.5 h-3.5" />
+                          )}
+                          <span>إرسال السؤال</span>
+                        </button>
+                        <input
+                          type="text"
+                          value={studyFollowUpText}
+                          onChange={(e) => setStudyFollowUpText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              submitStudyFollowUpQuestion();
+                            }
+                          }}
+                          placeholder="مثال: لم أفهم كيف وجدت معادلة المماس، أرجو التوضيح..."
+                          className="flex-1 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg px-3 py-2 text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -4,7 +4,7 @@ import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "firebase/fires
 import firebaseConfig from "../firebase-applet-config.json" with { type: "json" };
 
 const app = initializeApp(firebaseConfig);
-export const db = firebaseConfig.firestoreDatabaseId
+export const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 export const auth = getAuth(app);

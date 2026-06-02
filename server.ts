@@ -253,15 +253,36 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
           });
         }
 
-        // Generate output
-        const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: cleanHistory,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            temperature: 0.75,
+        // Generate output with gemini-3.5-flash and fallback to gemini-3.1-flash-lite
+        let response;
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: cleanHistory,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              temperature: 0.75,
+            }
+          });
+        } catch (firstModelErr: any) {
+          const errMsg = firstModelErr?.message || String(firstModelErr);
+          const isDemandOrQuota = errMsg.includes("demand") || errMsg.includes("quota") || errMsg.includes("overloaded") || errMsg.includes("limit") || errMsg.includes("exhausted") || errMsg.includes("429");
+          console.warn(`[Server] gemini-3.5-flash failed: "${errMsg}". Fallback condition: ${isDemandOrQuota}`);
+          
+          if (isDemandOrQuota) {
+            console.log("[Server] Falling back to stable model: gemini-3.1-flash-lite");
+            response = await ai.models.generateContent({
+              model: "gemini-3.1-flash-lite",
+              contents: cleanHistory,
+              config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+                temperature: 0.75,
+              }
+            });
+          } else {
+            throw firstModelErr;
           }
-        });
+        }
 
         const textOutput = response.text || "";
         if (textOutput) {

@@ -47,6 +47,7 @@ export default function App() {
   // PWA standalone installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [showPwaHelpModal, setShowPwaHelpModal] = useState(false);
 
   // 1. Listen for real-time adjustments in Firestore config
   useEffect(() => {
@@ -96,12 +97,15 @@ export default function App() {
   }, []);
 
   const handleInstallPWA = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`Direct installation choice: ${outcome}`);
-    setDeferredPrompt(null);
-    setIsInstallable(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`Direct installation choice: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    } else {
+      setShowPwaHelpModal(true);
+    }
   };
 
   const handleSettingsUpdated = (
@@ -248,6 +252,17 @@ export default function App() {
 
           {/* Standalone Header Action / Install indicator */}
           <div className="flex items-center gap-3">
+            {/* Direct PWA Install Button representing the user request */}
+            <button
+              onClick={handleInstallPWA}
+              type="button"
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all duration-205 cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-md shadow-emerald-950/40"
+              title="تثبيت التطبيق على جهازك كـ تطبيق أندرويد"
+            >
+              <Download className="w-4 h-4 shrink-0 animate-bounce" />
+              <span>تثبيت التطبيق 📱</span>
+            </button>
+
             {/* Elegant Light / Dark Mode theme switcher */}
             <button
               onClick={() => {
@@ -357,6 +372,75 @@ export default function App() {
           الرياضيات هي بوابة البرمجة - لا تنسونا من صالح دعائكم 🇩🇿
         </p>
       </footer>
+
+      {/* PWA Direct Installation Guidance Modal */}
+      {showPwaHelpModal && (
+        <div className="fixed inset-0 bg-[#020617]/85 backdrop-blur-md flex items-center justify-center p-4 z-50 text-right">
+          <div className="bg-[#131b2e] max-w-md w-full rounded-2xl border border-emerald-500/35 p-5 sm:p-6 shadow-2xl relative space-y-4">
+            
+            {/* Upper Close Button */}
+            <button 
+              onClick={() => setShowPwaHelpModal(false)}
+              className="absolute top-4 left-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all"
+            >
+              إغلاق ✕
+            </button>
+
+            {/* Header Title with Algeria Icon */}
+            <div className="flex items-center gap-2 justify-end pt-2">
+              <span className="text-xl">🇩🇿 📱</span>
+              <h3 className="text-lg font-black text-white">تثبيت تطبيق الأستاذ دالي نجيب</h3>
+            </div>
+            
+            <p className="text-xs sm:text-sm text-slate-350 leading-relaxed font-semibold">
+              بني العزيز، كود الـ PWA مبرمج بالكامل لتثبيت التطبيق على هاتف الأندرويد أو الحاسوب مباشرة كأنّه تطبيق متجر حقيقي، دون عناء البحث في قائمة الثلاث نقاط بالأعلى!
+            </p>
+
+            {/* Steps or Frame Explanation */}
+            <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-3">
+              <span className="text-[11px] font-extrabold text-[#10b981] block border-b border-slate-800 pb-1.5">
+                طريقة التثبيت السريعة والسهلة 📝
+              </span>
+              <ol className="text-xs text-slate-200 space-y-2 list-decimal list-inside pr-1">
+                <li>
+                  من الأفضل **فتح التطبيق في نافذة مستقلة** عبر الضغط على الزر الأخضر بالأسفل لتجاوز قيود المعاينة الصارمة.
+                </li>
+                <li>
+                  بمجرد فتح التطبيق خارج المعاينة، سيظهر لك **إشعار التثبيت الفوري** مباشرة من خلال المتصفح.
+                </li>
+                <li>
+                  انقر على **"تثبيت" (Install)** ليتحول التطبيق مباشرة إلى أيقونة أندرويد حقيقية على هاتفك!
+                </li>
+              </ol>
+            </div>
+
+            {/* Action Buttons inside Modal */}
+            <div className="flex flex-col gap-2 pt-2">
+              <a 
+                href={window.location.origin} 
+                target="_blank"  
+                rel="noreferrer"
+                onClick={() => setShowPwaHelpModal(false)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer text-center"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                <span>فتح النافذة المستقلة للتثبيت الفوري 🚀</span>
+              </a>
+              <button 
+                onClick={() => setShowPwaHelpModal(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all"
+              >
+                فهمت، شكراً يا أستاذ!
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-500 text-center font-mono pt-1">
+              - لا تنسونا من صالح دعائكم -
+            </p>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
