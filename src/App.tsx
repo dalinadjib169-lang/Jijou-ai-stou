@@ -49,37 +49,35 @@ export default function App() {
   const [isInstallable, setIsInstallable] = useState(false);
   const [showPwaHelpModal, setShowPwaHelpModal] = useState(false);
 
-  // 1. Listen for real-time adjustments in Firestore config
+  // 1. Fetch secure welcome configurations and profile image from public endpoint on mount
   useEffect(() => {
-    const docRef = doc(db, "settings", "dali");
-    const unsubscribe = onSnapshot(docRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (data.welcomeMessage) {
-          setWelcomeMessage(data.welcomeMessage);
-          localStorage.setItem("dali_welcomeMessage", data.welcomeMessage);
+    const obtainConfig = async () => {
+      try {
+        const response = await fetch("/api/public/config");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.welcomeMessage) {
+            setWelcomeMessage(data.welcomeMessage);
+            localStorage.setItem("dali_welcomeMessage", data.welcomeMessage);
+          }
+          if (data.profileImageUrl) {
+            setProfileImageUrl(data.profileImageUrl);
+            localStorage.setItem("dali_profileImageUrl", data.profileImageUrl);
+          }
+          if (data.keyRotationMode) {
+            setKeyRotationMode(data.keyRotationMode);
+            localStorage.setItem("dali_keyRotationMode", data.keyRotationMode);
+          }
+          if (typeof data.selectedKeyIndex === "number") {
+            setSelectedKeyIndex(data.selectedKeyIndex);
+            localStorage.setItem("dali_selectedKeyIndex", String(data.selectedKeyIndex));
+          }
         }
-        if (data.profileImageUrl) {
-          setProfileImageUrl(data.profileImageUrl);
-          localStorage.setItem("dali_profileImageUrl", data.profileImageUrl);
-        }
-        if (Array.isArray(data.apiKeys)) {
-          setApiKeys(data.apiKeys);
-          localStorage.setItem("dali_apiKeys", JSON.stringify(data.apiKeys));
-        }
-        if (data.keyRotationMode) {
-          setKeyRotationMode(data.keyRotationMode);
-          localStorage.setItem("dali_keyRotationMode", data.keyRotationMode);
-        }
-        if (typeof data.selectedKeyIndex === "number") {
-          setSelectedKeyIndex(data.selectedKeyIndex);
-          localStorage.setItem("dali_selectedKeyIndex", String(data.selectedKeyIndex));
-        }
+      } catch (err) {
+        console.warn("Could not fetch secure REST configurations, using cached parameters:", err);
       }
-    }, (error) => {
-      console.info("Firestore sync profile load completed.");
-    });
-    return () => unsubscribe();
+    };
+    obtainConfig();
   }, []);
 
   // 2. Hear and capture browser beforeinstallprompt to enable direct PWA installation button
@@ -287,6 +285,45 @@ export default function App() {
 
         {/* Moving Ticker with spiritual Azkar */}
         <DhikrTicker />
+
+        {/* Prominent High-Conversion Android/PWA Installation Banner */}
+        <div className="max-w-4xl mx-auto px-4 mt-3">
+          <div className="bg-gradient-to-r from-slate-900 via-[#101b2f] to-slate-900 border border-emerald-500/25 p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-emerald-950/15 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
+            
+            <div className="flex items-center gap-4 text-right flex-grow z-10 w-full sm:w-auto">
+              <div className="relative shrink-0">
+                <img 
+                  src="/dali_icon.png" 
+                  alt="Pro DZ Dali Icon" 
+                  className="w-14 h-14 rounded-2xl border border-emerald-500/40 shadow-md object-contain"
+                />
+                <span className="absolute -top-1 -left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1 py-0.5 rounded-md shadow uppercase leading-none animate-pulse">PWA</span>
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 justify-end">
+                  <span>تثبيت تطبيق "الأستاذ دالي" مباشرة على هاتفك</span>
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                </h3>
+                <p className="text-[11px] sm:text-xs text-slate-450 leading-relaxed font-semibold">
+                  احصل على وصول مباشر وفوري مئة بالمئة كأنّه تطبيق أندرويد رسمي مثبت من متجر جوجل. سريع، خفيف، ولا يستهلك باقة الإنترنت! 🇩🇿
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 z-10 shrink-0 w-full md:w-auto">
+              <button
+                onClick={handleInstallPWA}
+                type="button"
+                className="w-full md:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 hover:scale-103 active:scale-98"
+              >
+                <Download className="w-4.5 h-4.5 shrink-0 animate-bounce" />
+                <span>تحميل وتثبيت التطبيق مباشرة (APK للـ PWA) 📱</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Tab switch layout buttons */}
         <nav className="flex items-center justify-center bg-[#131b2e] p-1.5 rounded-xl border border-slate-850 shadow-md max-w-lg mx-auto">

@@ -5,7 +5,8 @@ const ASSETS = [
   "/src/main.tsx",
   "/src/App.tsx",
   "/src/index.css",
-  "/public/manifest.json"
+  "/manifest.json",
+  "/dali_icon.png"
 ];
 
 self.addEventListener("install", (e) => {

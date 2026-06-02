@@ -55,6 +55,28 @@ export default function AdminSection({
   }, [profileImageUrl, welcomeMessage, apiKeys, keyRotationMode, selectedKeyIndex]);
 
   useEffect(() => {
+    const loadServerSettings = async () => {
+      if (user && !user.email?.endsWith("_local_mode")) {
+        try {
+          const idToken = await user.getIdToken();
+          const res = await fetch(`/api/admin/get-settings?idToken=${idToken}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.welcomeMessage) setWelcomeMsg(data.welcomeMessage);
+            if (data.profileImageUrl) setProfileImage(data.profileImageUrl);
+            if (data.apiKeys) setKeysList(data.apiKeys);
+            if (data.keyRotationMode) setRotationMode(data.keyRotationMode);
+            if (typeof data.selectedKeyIndex === "number") setActiveKeyIdx(data.selectedKeyIndex);
+          }
+        } catch (e) {
+          console.error("Could not fetch secure admin settings:", e);
+        }
+      }
+    };
+    loadServerSettings();
+  }, [user]);
+
+  useEffect(() => {
     // Listen for authentication changes
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
@@ -220,24 +242,33 @@ export default function AdminSection({
     // 2. Call the app's parent callback to redraw header & chat sidebar profile pictures instantly
     onSettingsUpdated(targetImg, targetMsg, keysList, rotationMode, activeKeyIdx);
 
+    const isLocalMode = user?.email?.endsWith("_local_mode");
+
     try {
-      if (user) {
-        // Authorized user attempts direct Firebase sync with automatic 4-second network timeout to prevent infinite UI loading states
-        const docRef = doc(db, "settings", "dali");
-        const uploadPayload = {
-          profileImageUrl: targetImg,
-          welcomeMessage: targetMsg,
-          apiKeys: keysList,
-          keyRotationMode: rotationMode,
-          selectedKeyIndex: activeKeyIdx
-        };
+      if (user && !isLocalMode) {
+        // Retrieve standard Firebase ID token
+        const idToken = await user.getIdToken();
+        
+        // Secure server-side validation and encryption
+        const res = await fetch("/api/admin/save-settings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            idToken,
+            welcomeMessage: targetMsg,
+            profileImageUrl: targetImg,
+            apiKeys: keysList,
+            keyRotationMode: rotationMode,
+            selectedKeyIndex: activeKeyIdx
+          })
+        });
 
-        const savePromise = setDoc(docRef, uploadPayload);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("تباطؤ أو انقطاع في الاستجابة السحابية (Timeout)")), 4000)
-        );
-
-        await Promise.race([savePromise, timeoutPromise]);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error || `كود استجابة غير صالح: ${res.status}`);
+        }
 
         setSaveSuccess(true);
         setTimeout(() => {
@@ -249,15 +280,15 @@ export default function AdminSection({
         setTimeout(() => {
           setSaveSuccess(false);
         }, 4000);
-        alert("✓ تم حفظ وتطبيق صورتك الشخصية والرسالة بنجاح محلياً في جهازك الحالي! لمزامنتها سحابياً لجميع الطلاب، تفضل بتسجيل الدخول كأستاذ.");
+        if (isLocalMode) {
+          alert("✓ تمت المعاينة محلياً وحفظ الإعدادات بنجاح فائق! لمزامنتها وتوزيعها لجميع طلابك سحابياً وآمنة بالكامل يرجى تسجيل الدخول.");
+        } else {
+          alert("✓ تم حفظ وتطبيق صورتك الشخصية والرسالة بنجاح محلياً في جهازك الحالي! لمزامنتها سحابياً لجميع الطلاب، تفضل بتسجيل الدخول كأستاذ.");
+        }
       }
     } catch (err: any) {
-      console.warn("Firestore writing is locked or timed out, saved configurations locally inside modern LocalStorage fallback:", err);
-      setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 4000);
-      alert("✓ تم حفظ البيانات وتطبيقها محلياً في متصفحك بنجاح! وسوف تظل مطبقة وتعمل فوراً، لكن تعذر الحفظ السحابي المركزي بسبب غياب صلاحيات الكتابة المباشرة أو بطء الاتصال بالخادم السحابي لجميع الطلاب.");
+      console.warn("Secure saving encountered an issue, saved configurations locally inside modern LocalStorage fallback:", err);
+      alert(`⚠️ حدث تنبيه أثناء الحفظ السحابي الآمن والتشفير: ${err?.message || err}\n\nتم تطبيق الصورة والبيانات محلياً لتفادي التأخير وبقيت نشطة!`);
     } finally {
       setIsSaving(false);
     }

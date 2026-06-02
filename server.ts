@@ -3,13 +3,78 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import dotenv from "dotenv";
+import crypto from "crypto";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Solid encryption constants
+const ALGORITHM = 'aes-256-cbc';
+const SECRET_SALT = process.env.GEMINI_API_KEY || "dali-super-secure-salt-2026-dz-algeria";
+
+function getCipherKey(): Buffer {
+  // Hash the salt to always get a 32-byte key
+  return crypto.createHash('sha256').update(SECRET_SALT).digest();
+}
+
+function encrypt(text: string): string {
+  try {
+    if (!text) return "";
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(ALGORITHM, getCipherKey(), iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+  } catch (err) {
+    console.error("Encryption error:", err);
+    return text;
+  }
+}
+
+function decrypt(text: string): string {
+  try {
+    if (!text) return "";
+    const parts = text.split(':');
+    if (parts.length !== 2) return text; // Bypass if not encrypted or doesn't follow IV format
+    const iv = Buffer.from(parts[0], 'hex');
+    const encryptedText = Buffer.from(parts[1], 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, getCipherKey(), iv);
+    let decrypted = decipher.update(encryptedText);
+    // @ts-ignore
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (err) {
+    // Falls back to backward compatibility for legacy plain keys
+    return text;
+  }
+}
+
+// Check with Firebase Auth endpoint to cryptographically verify bearer token
+async function verifyFirebaseToken(idToken: string): Promise<string | null> {
+  try {
+    if (!idToken) return null;
+    const firebaseApiKey = firebaseConfig.apiKey;
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken })
+    });
+    if (!res.ok) {
+      console.warn("Firebase ID Token validation returned HTTP status:", res.status);
+      return null;
+    }
+    const data: any = await res.json();
+    const email = data?.users?.[0]?.email;
+    return email ? email.toLowerCase() : null;
+  } catch (e) {
+    console.error("Token verification error:", e);
+    return null;
+  }
+}
 
 // Increase payload limit to handle base64 images
 app.use(express.json({ limit: "50mb" }));
@@ -63,12 +128,15 @@ async function getRotatedApiKeys(): Promise<string[]> {
       const data = docSnap.data();
       const keys = data.apiKeys || [];
       if (Array.isArray(keys)) {
+        // Decrypt the keys first before validating
+        const decryptedKeys = keys.map(k => decrypt(String(k).trim()));
+
         // Filter keys starting with AIzaSy or having key characteristics and not containing masking dots
-        let validKeys = keys.map(k => String(k).trim())
+        let validKeys = decryptedKeys.map(k => String(k).trim())
           .filter(k => k.startsWith("AIzaSy") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
         
         if (validKeys.length === 0) {
-          validKeys = keys.map(k => String(k).trim())
+          validKeys = decryptedKeys.map(k => String(k).trim())
             .filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
         }
         validKeys.forEach(k => {
@@ -314,6 +382,150 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     res.status(500).json({ 
       error: error?.message || "حدث خطأ غير متوقع أثناء معالجة طلبك." 
     });
+  }
+});
+
+// Secure endpoint to serve public welcome configurations to students without exposing any API keys
+app.get("/api/public/config", async (req: any, res: any) => {
+  try {
+    const docRef = doc(firestoreDb, "settings", "dali");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return res.json({
+        welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+        profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
+        keyRotationMode: data.keyRotationMode || "sequential",
+        selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
+      });
+    }
+  } catch (err) {
+    console.warn("[REST Config Load Warning]:", err);
+  }
+
+  // Fallback safe configuration
+  res.json({
+    welcomeMessage: "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+    profileImageUrl: "https://img.icons8.com/color/150/user-male-circle.png",
+    keyRotationMode: "sequential",
+    selectedKeyIndex: -1
+  });
+});
+
+// Secure endpoint for the authenticated Admin to get settings with MASKED keys
+app.get("/api/admin/get-settings", async (req: any, res: any) => {
+  try {
+    const idToken = req.query.idToken || "";
+    const email = await verifyFirebaseToken(idToken);
+    
+    // Check if verified admin
+    const isAdmin = email && (email === "dalind1990@gmail.com" || email === "dalinadjib169@gmail.com");
+    if (!isAdmin) {
+      return res.status(403).json({ error: "عذراً يا بني، أنت غير مصرح لك بقراءة هذه الإعدادات الخاصة بالأستاذ." });
+    }
+
+    const docRef = doc(firestoreDb, "settings", "dali");
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const rawApiKeys = data.apiKeys || [];
+      
+      // Decrypt stored keys and mask them for display safety
+      const maskedApiKeys = rawApiKeys.map((k: string) => {
+        const decrypted = decrypt(k);
+        if (decrypted.length > 12) {
+          return `${decrypted.substring(0, 8)}...${decrypted.substring(decrypted.length - 4)}`;
+        }
+        return decrypted;
+      });
+
+      return res.json({
+        welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+        profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
+        keyRotationMode: data.keyRotationMode || "sequential",
+        selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
+        apiKeys: maskedApiKeys // safe masked keys
+      });
+    }
+
+    return res.json({
+      welcomeMessage: "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+      profileImageUrl: "https://img.icons8.com/color/150/user-male-circle.png",
+      keyRotationMode: "sequential",
+      selectedKeyIndex: -1,
+      apiKeys: []
+    });
+
+  } catch (error: any) {
+    console.error("[Get Settings Error]:", error);
+    res.status(500).json({ error: "فشل استرجاع البيانات الآمنة." });
+  }
+});
+
+// Secure endpoint for the authenticated Admin to save settings with encrypted keys
+app.post("/api/admin/save-settings", async (req: any, res: any) => {
+  try {
+    const { idToken, welcomeMessage, profileImageUrl, apiKeys = [], keyRotationMode, selectedKeyIndex } = req.body;
+    const email = await verifyFirebaseToken(idToken);
+
+    const isAdmin = email && (email === "dalind1990@gmail.com" || email === "dalinadjib169@gmail.com");
+    if (!isAdmin) {
+      return res.status(403).json({ error: "عذراً يا بني، أنت غير مصرح لك بتعديل هذه الإعدادات الخاصة بالأستاذ." });
+    }
+
+    // 1. We must handle keys carefully because the frontend might send back masked keys (e.g. AIzaSy...4xZ)
+    // We should read the existing database keys first to preserve those unchanged!
+    const docRef = doc(firestoreDb, "settings", "dali");
+    const docSnap = await getDoc(docRef);
+    let originalEncryptedKeys: string[] = [];
+    if (docSnap.exists()) {
+      originalEncryptedKeys = docSnap.data().apiKeys || [];
+    }
+
+    const decryptedOriginalKeys = originalEncryptedKeys.map(k => decrypt(k));
+
+    // 2. Map and encrypt inputs
+    const encryptedKeysToSave = apiKeys.map((keyInput: string) => {
+      const trimmed = String(keyInput).trim();
+      
+      // If the incoming key is masked (has "..."), it means it was not edited by the Admin.
+      // We should locate its original match from the existing database keys!
+      if (trimmed.includes("...")) {
+        const indexMatch = apiKeys.indexOf(keyInput);
+        if (indexMatch >= 0 && indexMatch < decryptedOriginalKeys.length) {
+          // Use the original encrypted key directly
+          return originalEncryptedKeys[indexMatch];
+        }
+        // Fallback default
+        return trimmed;
+      }
+
+      // If it's a completely new plain text key, encrypt it securely!
+      if (trimmed.startsWith("AIzaSy") || trimmed.length > 20) {
+        return encrypt(trimmed);
+      }
+
+      // Keep it as is or encrypt it
+      return encrypt(trimmed);
+    });
+
+    const payload = {
+      welcomeMessage: welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+      profileImageUrl: profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
+      apiKeys: encryptedKeysToSave,
+      keyRotationMode: keyRotationMode || "sequential",
+      selectedKeyIndex: typeof selectedKeyIndex === "number" ? selectedKeyIndex : -1
+    };
+
+    await setDoc(docRef, payload);
+
+    console.log(`[Admin Security] Saved settings for admin ${email}. Keys saved securely: ${encryptedKeysToSave.length}`);
+    res.json({ success: true });
+
+  } catch (error: any) {
+    console.error("[Save Settings Error]:", error);
+    res.status(500).json({ error: "فشل حفظ وتأمين الإعدادات." });
   }
 });
 
