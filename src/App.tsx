@@ -338,7 +338,7 @@ export default function App() {
         </header>
 
         {/* Moving Ticker with spiritual Azkar */}
-        <DhikrTicker />
+        <DhikrTicker isDarkMode={isDarkMode} />
 
         {/* Prominent High-Conversion Android/PWA Installation Banner */}
         <div className="max-w-4xl mx-auto px-4 mt-3">

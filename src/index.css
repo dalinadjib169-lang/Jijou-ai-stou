@@ -1,1 +1,190 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* --- Peacefully looping, seamless keyframe animations for the Azkar ribbon --- */
+@keyframes marquee-rtl {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes marquee-ltr {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+.custom-marquee-scroll {
+  display: flex;
+  width: max-content;
+}
+
+.custom-marquee-scroll.rtl {
+  animation: marquee-rtl var(--marquee-duration, 120s) linear infinite;
+  animation-play-state: var(--marquee-play-state, running);
+}
+
+.custom-marquee-scroll.ltr {
+  animation: marquee-ltr var(--marquee-duration, 120s) linear infinite;
+  animation-play-state: var(--marquee-play-state, running);
+}
+
+.custom-marquee-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* --- Comprehensive High-Contrast Light Mode Overrides for pristine typography and UI visibility --- */
+.light-theme-wrapper {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Global Container backgrounds conversion to bright white with clear boundaries */
+.light-theme-wrapper header,
+.light-theme-wrapper nav,
+.light-theme-wrapper main,
+.light-theme-wrapper main > div,
+.light-theme-wrapper .bg-\[\#131b2e\],
+.light-theme-wrapper .bg-\[\#101726\],
+.light-theme-wrapper .bg-\[\#0b0f19\],
+.light-theme-wrapper .bg-slate-950,
+.light-theme-wrapper .bg-slate-900,
+.light-theme-wrapper .bg-slate-850,
+.light-theme-wrapper .bg-slate-800,
+.light-theme-wrapper .bg-[#131b2e],
+.light-theme-wrapper .bg-[#101726],
+.light-theme-wrapper .bg-[#0b0f19],
+.light-theme-wrapper .bg-slate-950\/70,
+.light-theme-wrapper .bg-slate-950\/45,
+.light-theme-wrapper .bg-slate-900\/80,
+.light-theme-wrapper .bg-slate-900\/50,
+.light-theme-wrapper .bg-slate-900\/60,
+.light-theme-wrapper .bg-slate-950\/50,
+.light-theme-wrapper .bg-slate-950\/80,
+.light-theme-wrapper .bg-slate-900\/90,
+.light-theme-wrapper .bg-slate-800\/40,
+.light-theme-wrapper .bg-[#111827],
+.light-theme-wrapper .bg-[#1a2436] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Soft white/gray backgrounds for specific sub-panels & chats */
+.light-theme-wrapper .bg-slate-900,
+.light-theme-wrapper .bg-slate-800,
+.light-theme-wrapper .bg-slate-900\/50 {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Input fields, select forms, textareas */
+.light-theme-wrapper input,
+.light-theme-wrapper select,
+.light-theme-wrapper textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+.light-theme-wrapper ::placeholder,
+.light-theme-wrapper input::placeholder,
+.light-theme-wrapper textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+/* Light mode Border definitions */
+.light-theme-wrapper .border-slate-850,
+.light-theme-wrapper .border-slate-800,
+.light-theme-wrapper .border-slate-755,
+.light-theme-wrapper .border-slate-700,
+.light-theme-wrapper .border-slate-750,
+.light-theme-wrapper .border-slate-800\/20,
+.light-theme-wrapper .border-slate-800\/80,
+.light-theme-wrapper .border-emerald-500\/25,
+.light-theme-wrapper .border-emerald-500\/20,
+.light-theme-wrapper .border-emerald-500\/30,
+.light-theme-wrapper .border-slate-800\/60,
+.light-theme-wrapper .border-slate-705\/50 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Deep high-contrast typography for headings and prominent texts */
+.light-theme-wrapper h1,
+.light-theme-wrapper h2,
+.light-theme-wrapper h3,
+.light-theme-wrapper h4,
+.light-theme-wrapper h5,
+.light-theme-wrapper .text-white,
+.light-theme-wrapper .text-slate-100,
+.light-theme-wrapper .text-slate-200,
+.light-theme-wrapper .text-slate-300,
+.light-theme-wrapper .text-slate-305,
+.light-theme-wrapper .text-slate-350,
+.light-theme-wrapper .text-slate-400,
+.light-theme-wrapper .text-slate-450 {
+  color: #0f172a !important;
+}
+
+/* Highly legible secondary text */
+.light-theme-wrapper p,
+.light-theme-wrapper span,
+.light-theme-wrapper label,
+.light-theme-wrapper li,
+.light-theme-wrapper .text-slate-300,
+.light-theme-wrapper .text-slate-400,
+.light-theme-wrapper .text-slate-450 {
+  color: #334155 !important;
+}
+
+.light-theme-wrapper .text-slate-500,
+.light-theme-wrapper .text-slate-500\/60 {
+  color: #475569 !important;
+}
+
+/* Ensure critical interaction text colors are perfectly visible in light mode */
+.light-theme-wrapper .text-emerald-400 {
+  color: #047857 !important;
+}
+
+.light-theme-wrapper .text-amber-400 {
+  color: #b45309 !important;
+}
+
+.light-theme-wrapper .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+
+.light-theme-wrapper .text-cyan-455,
+.light-theme-wrapper .text-cyan-405 {
+  color: #0369a1 !important;
+}
+
+/* Interactive chats styling */
+.light-theme-wrapper .bg-\[\#111827\],
+.light-theme-wrapper bg-\[\#111827\] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme-wrapper .bg-\[\#1a2436\],
+.light-theme-wrapper bg-\[\#1a2436\] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Active tab selection updates */
+.light-theme-wrapper nav button.bg-slate-800 {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.light-theme-wrapper nav button {
+  color: #475569 !important;
+}
