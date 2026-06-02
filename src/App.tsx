@@ -294,16 +294,7 @@ export default function App() {
           {/* Standalone Header Action / Install indicator */}
           <div className="flex items-center gap-3">
             {/* Direct PWA Install Button representing the user request */}
-            {isAppInstalled ? (
-              <button
-                onClick={handleUninstallPWA}
-                type="button"
-                className="px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/30 text-red-400 hover:text-red-300 transition-all duration-205 cursor-pointer flex items-center gap-1.5 text-xs font-black border border-red-900/30 shadow-md"
-                title="إلغاء التثبيت وإعادة قفل التطبيق للمعاينة"
-              >
-                <span>إزالة التطبيق 🗑️</span>
-              </button>
-            ) : (
+            {!isAppInstalled && (
               <button
                 onClick={handleInstallPWA}
                 type="button"
@@ -341,53 +332,33 @@ export default function App() {
         <DhikrTicker isDarkMode={isDarkMode} />
 
         {/* Prominent High-Conversion Android/PWA Installation Banner */}
-        <div className="max-w-4xl mx-auto px-4 mt-3">
-          <div className="bg-gradient-to-r from-slate-900 via-[#101b2f] to-slate-900 border border-emerald-500/25 p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-emerald-950/15 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
-            
-            <div className="flex items-center gap-4 text-right flex-grow z-10 w-full sm:w-auto">
-              <div className="relative shrink-0">
-                <img 
-                  src="/dali_icon.png" 
-                  alt="Pro DZ Dali Icon" 
-                  className="w-14 h-14 rounded-2xl border border-emerald-500/40 shadow-md object-contain"
-                />
-                <span className="absolute -top-1 -left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1 py-0.5 rounded-md shadow uppercase leading-none animate-pulse">PWA</span>
-              </div>
+        {!isAppInstalled && (
+          <div className="max-w-4xl mx-auto px-4 mt-3">
+            <div className="bg-gradient-to-r from-slate-900 via-[#101b2f] to-slate-900 border border-emerald-500/25 p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-emerald-950/15 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
               
-              <div className="space-y-1">
-                <h3 className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 justify-end">
-                  {isAppInstalled ? (
-                    <>
-                      <span>تطبيق الأستاذ دالي مثبت بنجاح ومثالي للعمل! 🎉</span>
-                      <Check className="w-4 h-4 text-emerald-400 animate-bounce" />
-                    </>
-                  ) : (
-                    <>
-                      <span>تثبيت تطبيق "الأستاذ دالي" مباشرة على هاتفك</span>
-                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-                    </>
-                  )}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-450 leading-relaxed font-semibold text-right">
-                  {isAppInstalled 
-                    ? "أنت الآن تدرس وتقوم بدراسة الدوال الرياضية الصعبة بداخل تطبيق الهاتف بكفائة قصوى وسرعة 100%!"
-                    : "احصل على وصول مباشر وفوري مئة بالمئة كأنّه تطبيق أندرويد رسمي مثبت من متجر جوجل. سريع، خفيف، ولا يستهلك باقة الإنترنت! 🇩🇿"
-                  }
-                </p>
+              <div className="flex items-center gap-4 text-right flex-grow z-10 w-full sm:w-auto">
+                <div className="relative shrink-0">
+                  <img 
+                    src="/dali_icon.png" 
+                    alt="Pro DZ Dali Icon" 
+                    className="w-14 h-14 rounded-2xl border border-emerald-500/40 shadow-md object-contain"
+                  />
+                  <span className="absolute -top-1 -left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1 py-0.5 rounded-md shadow uppercase leading-none animate-pulse">PWA</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <h3 className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 justify-end">
+                    <span>تثبيت تطبيق "الأستاذ دالي" مباشرة على هاتفك</span>
+                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-450 leading-relaxed font-semibold text-right">
+                    احصل على وصول مباشر وفوري مئة بالمئة كأنّه تطبيق أندرويد رسمي مثبت من متجر جوجل. سريع، خفيف، ولا يستهلك باقة الإنترنت! 🇩🇿
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 z-10 shrink-0 w-full md:w-auto">
-              {isAppInstalled ? (
-                <button
-                  onClick={handleUninstallPWA}
-                  type="button"
-                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-red-950/50 hover:bg-red-900/40 border border-red-850/50 text-red-300 hover:text-red-200 text-xs sm:text-sm font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow"
-                >
-                  <span>إلغاء التثبيت / إزالة تطبيق 🗑️</span>
-                </button>
-              ) : (
+              <div className="flex items-center gap-2 z-10 shrink-0 w-full md:w-auto">
                 <button
                   onClick={handleInstallPWA}
                   type="button"
@@ -396,10 +367,10 @@ export default function App() {
                   <Download className="w-4.5 h-4.5 shrink-0 animate-bounce" />
                   <span>تحميل وتثبيت التطبيق مباشرة (APK للـ PWA) 📱</span>
                 </button>
-              )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tab switch layout buttons */}
         <nav className="flex items-center justify-center bg-[#131b2e] p-1.5 rounded-xl border border-slate-850 shadow-md max-w-lg mx-auto">
