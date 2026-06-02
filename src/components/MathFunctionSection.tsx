@@ -20,6 +20,15 @@ export default function MathFunctionSection({
   const [obliqueAsymptoteExpr, setObliqueAsymptoteExpr] = useState("x + 2"); // for (x^2-1)/(x-2) = x + 2 + 3/(x-2)
   const [mValue, setMValue] = useState(0); // sliding param for y = m discussion
 
+  // Custom states added for general m equation discussion & custom asymptotes
+  const [mEquation, setMEquation] = useState("m"); 
+  const [customHorizAsymptote, setCustomHorizAsymptote] = useState("");
+  const [customVertAsymptote, setCustomVertAsymptote] = useState("");
+  const [showHorizAsymptote, setShowHorizAsymptote] = useState(true);
+  const [showVertAsymptote, setShowVertAsymptote] = useState(true);
+  const [isStudyingMByAi, setIsStudyingMByAi] = useState(false);
+  const [mStudyResult, setMStudyResult] = useState<string | null>(null);
+
   // Intermediate Value Theorem (M.V.T) interval state
   const [intervalA, setIntervalA] = useState(0);
   const [intervalB, setIntervalB] = useState(3.5);
@@ -79,6 +88,45 @@ export default function MathFunctionSection({
       `);
       
       const result = evaluator(x);
+      return typeof result === "number" && isFinite(result) && !isNaN(result) ? result : NaN;
+    } catch (e) {
+      return NaN;
+    }
+  };
+
+  // Parse and evaluate an expression with both variable x and parameter m
+  const evaluateFuncWithM = (expr: string, x: number, m: number): number => {
+    try {
+      let cleanExpr = expr.trim();
+      if (cleanExpr.includes("=")) {
+        cleanExpr = cleanExpr.split("=").pop() || "";
+      }
+      
+      let formatted = cleanExpr.toLowerCase();
+      formatted = formatted
+        .replace(/\s+/g, "")
+        .replace(/(\d)([a-z])/g, "$1*$2") // Handles 2x, 2m, etc.
+        .replace(/(\d)\(/g, "$1*(")       // Handles 2(x+1)
+        .replace(/\^/g, "**")
+        .replace(/sin/g, "Math.sin")
+        .replace(/cos/g, "Math.cos")
+        .replace(/tan/g, "Math.tan")
+        .replace(/exp/g, "Math.exp")
+        .replace(/ln/g, "Math.log")
+        .replace(/sqrt/g, "Math.sqrt")
+        .replace(/pi/g, "Math.PI")
+        .replace(/e\*\*/g, "Math.exp") // handles e^x
+        .replace(/([^a-z]|^)e([^a-z]|$)/g, "$1Math.E$2");
+
+      const evaluator = new Function("x", "m", `
+        try {
+          return ${formatted};
+        } catch(e) {
+          return NaN;
+        }
+      `);
+      
+      const result = evaluator(x, m);
       return typeof result === "number" && isFinite(result) && !isNaN(result) ? result : NaN;
     } catch (e) {
       return NaN;
@@ -206,18 +254,39 @@ export default function MathFunctionSection({
 
     ctx.fillText("0", originX - 10, originY + 12);
 
-    // 3. Draw Parameter discussion: y = m
-    const pyM_Line = toPixelY(mValue);
+    // 3. Draw Parameter discussion: complete equation with m
     ctx.strokeStyle = "#ec4899"; // pink 500
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([6, 4]);
     ctx.beginPath();
-    ctx.moveTo(0, pyM_Line);
-    ctx.lineTo(width, pyM_Line);
+    
+    let isFirstM = true;
+    for (let px = 0; px <= width; px += 2) {
+      const mx = toMathX(px);
+      const my = evaluateFuncWithM(mEquation, mx, mValue);
+      if (!isNaN(my) && isFinite(my)) {
+        const py = toPixelY(my);
+        if (py >= 0 && py <= height) {
+          if (isFirstM) {
+            ctx.moveTo(px, py);
+            isFirstM = false;
+          } else {
+            ctx.lineTo(px, py);
+          }
+        }
+      }
+    }
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = "#ec4899";
-    ctx.fillText(`y = ${mValue.toFixed(1)} (الوسيط m)`, 12, pyM_Line - 6);
+
+    // Draw dynamic equation label near the left/top of the graph
+    const initialMathX = -8;
+    const initialMathY = evaluateFuncWithM(mEquation, initialMathX, mValue);
+    if (!isNaN(initialMathY) && isFinite(initialMathY)) {
+      ctx.fillStyle = "#ec4899";
+      ctx.font = "bold 10px Inter, sans-serif";
+      ctx.fillText(`y = ${mEquation.replace(/\*/g, "·")} [m = ${mValue.toFixed(2)}]`, 12, toPixelY(initialMathY) - 8);
+    }
 
     // 4. Plot Oblique Asymptote: y = obliqueAsymptoteExpr
     if (showOblique && obliqueAsymptoteExpr) {
@@ -244,6 +313,34 @@ export default function MathFunctionSection({
       }
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // label oblique
+      ctx.fillStyle = "#10b981";
+      ctx.font = "normal 10px Inter, sans-serif";
+      const yAtObliqueLabel = evaluateFunc(obliqueAsymptoteExpr, 6);
+      if (!isNaN(yAtObliqueLabel)) {
+        ctx.fillText(`(Δ): y = ${obliqueAsymptoteExpr}`, toPixelX(6) + 5, toPixelY(yAtObliqueLabel) - 5);
+      }
+    }
+
+    // 4b. Draw Custom Horizontal Asymptote: y = customHorizAsymptote
+    if (showHorizAsymptote && customHorizAsymptote) {
+      const hVal = parseFloat(customHorizAsymptote);
+      if (!isNaN(hVal)) {
+        const pyH = toPixelY(hVal);
+        if (pyH >= 0 && pyH <= height) {
+          ctx.strokeStyle = "#0d9488"; // teal 600
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(0, pyH);
+          ctx.lineTo(width, pyH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#0d9488";
+          ctx.fillText(`مُقارب أفقي y = ${hVal}`, 15, pyH - 6);
+        }
+      }
     }
 
     // 5. Plot Forbidden Values (Vertical Asymptote)
@@ -262,6 +359,26 @@ export default function MathFunctionSection({
         ctx.fillText(`مُقارب عمودي x = ${val}`, pval + 5, 20);
       }
     });
+
+    // 5b. Plot Custom Vertical Asymptotes: x = customVertAsymptote
+    if (showVertAsymptote && customVertAsymptote) {
+      const vValues = customVertAsymptote.split(",").map(s => parseFloat(s.trim())).filter(val => !isNaN(val));
+      vValues.forEach(val => {
+        const pval = toPixelX(val);
+        if (pval >= 0 && pval <= width) {
+          ctx.strokeStyle = "#db2777"; // pink-600
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(pval, 0);
+          ctx.lineTo(pval, height);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#db2777";
+          ctx.fillText(`مُقارب عمودي مخصص x = ${val}`, pval + 5, 40);
+        }
+      });
+    }
 
     // 6. Draw Curve f(x)
     ctx.strokeStyle = "#0284c7"; // deep mathematical blue
@@ -307,7 +424,7 @@ export default function MathFunctionSection({
         ctx.arc(px0, py0, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillText(`A(${x0}, ${y0.toFixed(1)})`, px0 + 7, py0 - 7);
-
+ 
         ctx.strokeStyle = "#f59e0b"; // amber 500
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -323,7 +440,7 @@ export default function MathFunctionSection({
       }
     }
 
-  }, [expression, mValue, obliqueAsymptoteExpr, showOblique, forbiddenValues, tangentPoint, showTangent]);
+  }, [expression, mValue, mEquation, obliqueAsymptoteExpr, showOblique, forbiddenValues, tangentPoint, showTangent, customHorizAsymptote, customVertAsymptote, showHorizAsymptote, showVertAsymptote]);
 
   const insertSymbol = (sym: string) => {
     let toInsert = sym;
@@ -955,6 +1072,36 @@ f(x) = ${expression} (القيمة x₀ = ${tangentPoint})
     }
   };
 
+  // Perform professional Algerian Baccalaureate parameter m discussion study with AI
+  const studyMParameterWithAI = async () => {
+    setIsStudyingMByAi(true);
+    setMStudyResult(null);
+    try {
+      const prompt = `أهلاً بك يا أستاذ دالي. نريد منك القيام بدراسة تفصيلية كاملة وممنهجة للمناقشة البيانية (المناقشة الوسيطية) في مادة الرياضيات للبكالوريا الجزائرية.
+الدالة المدروسة: f(x) = ${expression}
+معادلة المستقيم الفوقي المتغير بالوسيط m: y = ${mEquation}
+
+يرجى تصنيف وتحليل نوع هذه المناقشة البيانية (أفقية، مائلة، أو دورانية) بناءً على المعادلة y = ${mEquation}، ثم تقديم دراسة شاملة تتبع منهج التصحيح النموذجي لشهادة البكالوريا بالجزائر:
+1. **تحديد نوع المناقشة:** هل هي أفقية (f(x) = m) أم مائلة (f(x) = ax + m) أم دورانية (f(x) = mx + b) مع الشرح البياني المبسط.
+2. **علاقة المناقشة بخصائص Cf:** وضح كيف ترتبط هذه المناقشة بالمستقيمات المقاربة (الأفقية أو المائلة) والذروات (القيم الحدية) والمماس Cf.
+3. **دراسة تفصيلية لحلول المعادلة حسب قيم الوسيط m:**
+   - حدد المجالات لـ m بدقة (باستخدام القيم الحدية، المقاربات، إلخ).
+   - اعطِ عدد وإشارة الحلول (موجبة، سالبة، معدومة، مضاعفة) لكل مجال من قيم m بجدول أو نقاط واضحة.
+4. **نصائح وتوجيهات الأستاذ دالي:** نصيحة ذهبية للتلميذ الجزائري لتفادي الأخطاء الشائعة في رسم الخط المائل أو الدوار وتحديد التقاطعات بذكاء.
+
+أجب بتنظيم أكاديمي رصين وبيداغوجي ودي بصفتك الأستاذ القدير "دالي نجيب"، وتجنب كلياً الرموز اللاتينية الغامضة ($) واكتب المعادلات بصيغة واضحة وبسيطة جداً ومسحوبة للتلميذ الجزائري بترميز قوي، وصلي على شفيعنا وحبيبنا محمد ﷺ.`;
+
+      const reply = await callGeminiAPI(prompt);
+      setMStudyResult(reply);
+    } catch (error: any) {
+      console.error(error);
+      const errMsg = error?.message || String(error);
+      setMStudyResult(`عذراً بني، فشل الاتصال بالذكاء الاصطناعي للأستاذ دالي لدراسة الوسيط: ${errMsg}`);
+    } finally {
+      setIsStudyingMByAi(false);
+    }
+  };
+
   // Switch to chat tab carrying the question
   const sendQuestionToChatTab = () => {
     const textToCopy = `أستاذ دالي، بخصوص الدالة f(x) = ${expression}، لدي سؤال: ${studentQuestion || "كيف أقوم بتمثيل جدول التغيرات ودراسة نهاياتها بالتفصيل؟"}`;
@@ -1136,9 +1283,9 @@ f(x) = ${expression}
               <Activity className="w-5 h-5 text-emerald-400" />
             </h3>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">اكتب صيغة الدالة f(x) هنا:</label>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5 font-sans">اكتب صيغة الدالة f(x) هنا:</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-2.5 text-emerald-400 font-serif font-black text-sm">f(x) =</span>
                   <input 
@@ -1174,10 +1321,10 @@ f(x) = ${expression}
               {/* AI study result display */}
               {aiStudyResult && (
                 <div className="bg-[#1e293b] text-right p-4 rounded-xl border border-emerald-500/35 shadow-inner space-y-3">
-                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border-b border-emerald-700/30">
+                  <div className="flex justify-between items-center bg-[#0f172a] -mx-4 -mt-4 px-4 py-2.5 rounded-t-xl border-b border-emerald-700/30 font-sans">
                     <button 
                       onClick={() => setAiStudyResult(null)}
-                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-755 px-2 py-0.5 rounded cursor-pointer"
+                      className="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded cursor-pointer"
                     >
                       إغلاق ✕
                     </button>
@@ -1187,16 +1334,16 @@ f(x) = ${expression}
                     </span>
                   </div>
                   {aiStudiedExpression && aiStudiedExpression !== expression && (
-                    <div className="bg-amber-950/40 text-amber-300 p-2.5 rounded-lg text-[10.5px] border border-amber-500/20 font-bold leading-normal mb-2">
+                    <div className="bg-amber-950/40 text-amber-300 p-2.5 rounded-lg text-[10.5px] border border-amber-500/20 font-bold leading-normal mb-2 font-sans">
                        ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
                     </div>
                   )}
-                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
+                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1 text-right font-sans shadow-sm" style={{ direction: "rtl" }}>
                     {aiStudyResult}
                   </div>
                   
                   {/* Interactive Student Follow-up Question Panel */}
-                  <div className="border-t border-slate-700/50 pt-3 mt-4 space-y-3">
+                  <div className="border-t border-slate-700/50 pt-3 mt-4 space-y-3 font-sans">
                     <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800 text-right">
                       <p className="text-xs font-bold text-amber-300 flex items-center justify-end gap-1 mb-2">
                         <span>هل هناك خطوة لم تفهمها في دراسة الدالة؟ اسأل الأستاذ دالي مباشرة:</span>
@@ -1253,131 +1400,249 @@ f(x) = ${expression}
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center border-t border-slate-700/45 pt-2 text-[10px] text-slate-400">
+                  <div className="flex justify-between items-center border-t border-slate-700/45 pt-2 text-[10px] text-slate-400 font-sans font-sans">
                     <span>صانع الأجيال دالي نجيب 🎓</span>
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(aiStudyResult);
                         alert("✓ تم نسخ تقرير دراسة الدالة بالكامل للحافظة!");
                       }}
-                      className="text-[10px] bg-emerald-600 hover:bg-emerald-50 text-white font-bold px-2 py-1 rounded cursor-pointer"
+                      className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-1 rounded cursor-pointer"
                     >
                       نسخ الشرح الكامل
                     </button>
                   </div>
                 </div>
               )}
+              {/* Sliders for auxiliary evaluation & Asymptote Dashboard */}
+              <div className="space-y-4 pt-2 border-t border-slate-800">
+                <h4 className="text-white font-black text-xs flex items-center justify-end gap-1.5">
+                  لوحة المستقيمات المقاربة والمماسات Cf 📐📍
+                </h4>
 
-              {/* Mathematical Shortcut Keyboard Panel */}
-              <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 space-y-2 transition-colors">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-400 flex items-center gap-1 justify-end">
-                  لوحة إدخال الرموز والدوال الرياضية السريعة
-                  <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-                </span>
-                
-                <div className="grid grid-cols-5 gap-1.5 font-mono text-xs font-black select-none">
-                  <button onClick={() => insertSymbol("exp")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">eˣ</button>
-                  <button onClick={() => insertSymbol("ln")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">ln(x)</button>
-                  <button onClick={() => insertSymbol("^2")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x²</button>
-                  <button onClick={() => insertSymbol("^3")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">x³</button>
-                  <button onClick={() => insertSymbol("sqrt")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">√x</button>
-                  
-                  <button onClick={() => insertSymbol("sin")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">sin</button>
-                  <button onClick={() => insertSymbol("cos")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer">cos</button>
-                  <button onClick={() => insertSymbol("pi")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-sans">π</button>
-                  <button onClick={() => insertSymbol("/")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">/</button>
-                  <button onClick={() => insertSymbol("*")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">*</button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Tangent point slider */}
+                  <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="flex items-center gap-1 cursor-pointer select-none text-[11px] font-bold text-slate-400">
+                        <input 
+                          type="checkbox"
+                          checked={showTangent}
+                          onChange={(e) => setShowTangent(e.target.checked)}
+                          className="accent-amber-500 cursor-pointer"
+                        />
+                        <span>رسم المماس (Orange)</span>
+                      </label>
+                      <span className="text-[10px] text-amber-500 font-mono font-bold">x₀ = {tangentPoint}</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="-8"
+                      max="8"
+                      step="0.5"
+                      value={tangentPoint}
+                      onChange={(e) => setTangentPoint(parseFloat(e.target.value))}
+                      className="w-full accent-amber-500 bg-slate-800 rounded-lg h-1.5 cursor-pointer"
+                    />
+                  </div>
 
-                  <button onClick={() => insertSymbol("+")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">+</button>
-                  <button onClick={() => insertSymbol("-")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">-</button>
-                  <button onClick={() => insertSymbol("(")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">(</button>
-                  <button onClick={() => insertSymbol(")")} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 border border-slate-700 rounded-lg shadow-sm transition active:scale-95 cursor-pointer font-bold font-sans">)</button>
-                  <button onClick={clearExpression} className="bg-rose-950/40 hover:bg-rose-900 border border-rose-900/50 text-rose-400 py-1.5 rounded-lg shadow-sm transition active:scale-95 cursor-pointer text-[10px] font-bold">مسح C</button>
-                </div>
-              </div>
+                  {/* Oblique asymptote input */}
+                  <div className="bg-[#131b2e] p-3 rounded-xl border border-slate-805 space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-400">
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={showOblique}
+                          onChange={(e) => setShowOblique(e.target.checked)}
+                          className="accent-emerald-500 cursor-pointer"
+                        />
+                        <span>مقارب مائل (Green)</span>
+                      </label>
+                      <span className="text-[10px] text-emerald-400 font-mono">y = {obliqueAsymptoteExpr || "بدون"}</span>
+                    </div>
+                    <input 
+                      type="text"
+                      value={obliqueAsymptoteExpr}
+                      onChange={(e) => setObliqueAsymptoteExpr(e.target.value)}
+                      placeholder="مثال: x + 2"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-left font-mono text-emerald-400 text-xs focus:outline-none focus:border-emerald-505"
+                    />
+                  </div>
 
-              {/* Sliders for auxiliary evaluation */}
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-                  <label className="block text-[11px] font-bold text-slate-400 mb-1">نقطة التماس x₀:</label>
-                  <input 
-                    type="range"
-                    min="-8"
-                    max="8"
-                    step="0.5"
-                    value={tangentPoint}
-                    onChange={(e) => setTangentPoint(parseFloat(e.target.value))}
-                    className="w-full accent-emerald-500 bg-slate-800 rounded-lg h-1.5"
-                  />
-                  <div className="flex justify-between items-center text-xs text-amber-500 font-mono font-bold mt-1 shadow-sm">
-                    <span>{tangentPoint}</span>
-                    <span>x₀</span>
+                  {/* Custom horizontal asymptote input */}
+                  <div className="bg-[#131b2e] p-3 rounded-xl border border-slate-805 space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-400">
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={showHorizAsymptote}
+                          onChange={(e) => setShowHorizAsymptote(e.target.checked)}
+                          className="accent-teal-500 cursor-pointer"
+                        />
+                        <span>مقارب أفقي (Teal)</span>
+                      </label>
+                      <span className="text-[10px] text-teal-400 font-mono">y = {customHorizAsymptote || "بدون"}</span>
+                    </div>
+                    <input 
+                      type="text"
+                      value={customHorizAsymptote}
+                      onChange={(e) => setCustomHorizAsymptote(e.target.value)}
+                      placeholder="مثال: 1 أو 0"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-left font-mono text-teal-400 text-xs focus:outline-none focus:border-teal-550"
+                    />
+                  </div>
+
+                  {/* Custom vertical asymptote input */}
+                  <div className="bg-[#131b2e] p-3 rounded-xl border border-slate-805 space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-400">
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={showVertAsymptote}
+                          onChange={(e) => setShowVertAsymptote(e.target.checked)}
+                          className="accent-pink-600 cursor-pointer"
+                        />
+                        <span>مقارب عمودي مخصص (Pink)</span>
+                      </label>
+                      <span className="text-[10px] text-pink-400 font-mono">x = {customVertAsymptote || "بدون"}</span>
+                    </div>
+                    <input 
+                      type="text"
+                      value={customVertAsymptote}
+                      onChange={(e) => setCustomVertAsymptote(e.target.value)}
+                      placeholder="مثال: 2, -1"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-left font-mono text-pink-400 text-xs focus:outline-none focus:border-pink-550"
+                    />
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="bg-[#131b2e] p-3 rounded-xl border border-slate-805 text-emerald-400 text-xs leading-relaxed">
-                  <label className="block text-[11.5px] font-bold text-slate-400 mb-1 text-right">المقارب المائل المقدر y =</label>
-                  <input 
-                    type="text"
-                    value={obliqueAsymptoteExpr}
-                    onChange={(e) => setObliqueAsymptoteExpr(e.target.value)}
-                    placeholder="مثال: x + 2"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-left font-mono text-emerald-400 text-xs focus:outline-none focus:border-emerald-505"
-                  />
+          {/* Interactive m-parameter generalized discussion module */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-right space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="bg-pink-100 text-[#ec4899] text-[10px] px-2.5 py-0.5 rounded-full border border-pink-200 font-bold">البكالوريا التفاعلية 🇩🇿</span>
+              <span className="text-sm font-black text-slate-800">📊 المناقشة البيانية المتقدمة لحلول (f(x) = y):</span>
+            </div>
+
+            {/* Input for m equation expression */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-500 mb-1">اكتب صيغة معادلة المناقشة (بدلالة x و m) f(x) = :</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-[#ec4899] font-serif font-black text-xs">y =</span>
+                <input 
+                  type="text"
+                  value={mEquation}
+                  onChange={(e) => setMEquation(e.target.value)}
+                  placeholder="مثال: m أو x + m أو m*x"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-1.5 text-left font-mono text-pink-600 text-xs focus:outline-none focus:border-[#ec4899]"
+                />
+              </div>
+            </div>
+
+            {/* Template choices row */}
+            <div className="space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold block">أنماط المناقشة الجاهزة في البكالوريا:</span>
+              <div className="flex flex-wrap gap-1.5 justify-end">
+                <button 
+                  onClick={() => setMEquation("m")}
+                  className={`px-2 py-1 text-[10px] font-bold rounded border cursor-pointer transition ${mEquation === "m" ? "bg-pink-550 border-pink-600 bg-pink-100 text-pink-700 font-extrabold animate-pulse" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                >
+                  أفقية f(x) = m
+                </button>
+                <button 
+                  onClick={() => setMEquation("x + m")}
+                  className={`px-2 py-1 text-[10px] font-bold rounded border cursor-pointer transition ${mEquation === "x + m" ? "bg-pink-550 border-pink-600 bg-pink-100 text-pink-700 font-extrabold animate-pulse" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                >
+                  مائلة f(x) = x + m
+                </button>
+                <button 
+                  onClick={() => setMEquation("m * x")}
+                  className={`px-2 py-1 text-[10px] font-bold rounded border cursor-pointer transition ${mEquation === "m * x" ? "bg-pink-550 border-pink-600 bg-pink-100 text-pink-700 font-extrabold animate-pulse" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                >
+                  دورانية f(x) = m * x
+                </button>
+                <button 
+                  onClick={() => setMEquation("m * (x - 1) + 2")}
+                  className={`px-2 py-1 text-[10px] font-bold rounded border cursor-pointer transition ${mEquation === "m * (x - 1) + 2" ? "bg-pink-550 border-pink-600 bg-pink-100 text-pink-700 font-extrabold animate-pulse" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                >
+                  دورانية مائلة Cf
+                </button>
+              </div>
+            </div>
+
+            {/* Slider for m value parameter */}
+            <div className="space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div className="flex justify-between items-center text-[11px] font-black">
+                <span className="text-[#ec4899] font-mono text-xs">m = {mValue.toFixed(2)}</span>
+                <span className="text-slate-500">تغيير قيمة الوسيط m بيانيّاً:</span>
+              </div>
+              <input 
+                type="range"
+                min="-8"
+                max="8"
+                step="0.1"
+                value={mValue}
+                onChange={(e) => setMValue(parseFloat(e.target.value))}
+                className="w-full accent-pink-500 bg-slate-200 rounded-lg h-1.5 cursor-pointer"
+              />
+            </div>
+
+            {/* Live Intersection counter */}
+            <div className="flex justify-between items-center text-xs font-bold text-slate-650 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <span className="font-mono text-pink-600">{mEquation.replace(/\*/g, "·")}</span>
+              <div className="flex items-center gap-1.5">
+                <span>عدد نقاط التقاطع Cf:</span>
+                <span className="bg-pink-50 text-[#ec4899] px-2.5 py-0.5 rounded-md border border-pink-200 font-extrabold font-mono text-sm">
+                  {countParameterSolutions()}
+                </span>
+              </div>
+            </div>
+
+            {/* Dynamic visual equations representation */}
+            <p className="text-[10px] text-slate-400 leading-normal font-semibold">
+              💡 يُمكّنك رسم أي مستقيم أو منحنى وسيطي متحرك في مادة الرياضيات (مثل <code className="font-mono text-[#ec4899]">y = m * x - m</code>) ومراقبة مستويات التقاطع مع المنحنى Cf ديناميكيّاً في الشاشة!
+            </p>
+
+            {/* AI Graphical Study report trigger */}
+            <button
+              onClick={studyMParameterWithAI}
+              disabled={isStudyingMByAi}
+              className="w-full bg-[#ec4899] hover:bg-pink-600 text-white font-black text-xs sm:text-sm py-2 px-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
+            >
+              {isStudyingMByAi ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>الأستاذ دالي يُحضّر دراسة الوسيط... 🧠✍️</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-pink-200" />
+                  <span>تفصيل المناقشة البيانية لـ {mEquation} بالـ AI 🧠🎗️</span>
+                </>
+              )}
+            </button>
+
+            {/* Display AI Parameter discussion study response */}
+            {mStudyResult && (
+              <div className="bg-pink-950/5 border border-pink-200 p-4 rounded-xl text-right text-slate-800 space-y-3 shadow-inner">
+                <div className="flex justify-between items-center -mx-4 -mt-4 bg-pink-100 border-b border-pink-200 p-2.5 rounded-t-xl">
+                  <button 
+                    onClick={() => setMStudyResult(null)}
+                    className="text-[10px] text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-200 px-2 py-0.5 rounded cursor-pointer"
+                  >
+                    إغلاق ✕
+                  </button>
+                  <span className="text-pink-700 font-black text-xs">التفسير الأكاديمي الشامل للمناقشة الوسيطية:</span>
+                </div>
+                <div className="text-xs sm:text-sm leading-relaxed max-h-72 overflow-y-auto pl-1 whitespace-pre-wrap font-bold">
+                  {mStudyResult}
                 </div>
               </div>
-
-              <div className="flex items-center justify-between border-t border-slate-800 pt-3 flex-wrap gap-2 text-xs font-bold text-slate-405">
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input 
-                    type="checkbox"
-                    checked={showTangent}
-                    onChange={(e) => setShowTangent(e.target.checked)}
-                    className="accent-amber-500 cursor-pointer"
-                  />
-                  <span>رسم المماس (Orange)</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input 
-                    type="checkbox"
-                    checked={showOblique}
-                    onChange={(e) => setShowOblique(e.target.checked)}
-                    className="accent-emerald-500 cursor-pointer"
-                  />
-                  رسم المستقيم المقارب (Green)
-                </label>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Interactive m-parameter horizontal discussion module */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-right space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="bg-pink-100 text-[#ec4899] text-[10px] px-2 py-0.5 rounded-full border border-pink-200 font-bold">تفاعلي</span>
-              <span className="text-sm font-black text-slate-800">📊 المناقشة الوسيطية الأفقية (y = m):</span>
-            </div>
-            
-            {/* Horizontal slider for m */}
-            <input 
-              type="range"
-              min="-8"
-              max="8"
-              step="0.1"
-              value={mValue}
-              onChange={(e) => setMValue(parseFloat(e.target.value))}
-              className="w-full accent-pink-500 bg-slate-50 rounded-lg h-1.5 mb-2"
-            />
-
-            <div className="flex justify-between items-center text-xs font-bold text-slate-600 mb-2">
-              <span>قيمة m الحالية: <strong className="text-pink-600 font-mono text-sm">{mValue.toFixed(1)}</strong></span>
-              <span>عدد نقاط التقاطع: <span className="bg-pink-50 text-[#ec4899] px-2.5 py-0.5 rounded-md border border-pink-100 font-extrabold font-mono text-sm">{countParameterSolutions()}</span></span>
-            </div>
-
-            <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
-              تحديد بياني لعدد حلول المعادلة f(x) = m وهو الحل المشترك والتقاطعي بين منحنى الدالة Cf والمستقيم الأفقي الوردي المنقط.
-            </p>
-          </div>
 
           {/* Interactive Student Question and AI solver board */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
