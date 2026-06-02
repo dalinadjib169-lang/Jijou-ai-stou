@@ -68,18 +68,21 @@ export default function MathFunctionSection({
         .replace(/\s+/g, "")
         .replace(/(\d)([a-z])/g, "$1*$2") // Handles 2x, 2sin, 2cos, etc.
         .replace(/(\d)\(/g, "$1*(")       // Handles 2(x+1)
-        .replace(/\^/g, "**")
-        .replace(/sin/g, "Math.sin")
-        .replace(/cos/g, "Math.cos")
-        .replace(/tan/g, "Math.tan")
-        .replace(/exp/g, "Math.exp")
-        .replace(/ln/g, "Math.log")
-        .replace(/sqrt/g, "Math.sqrt")
-        .replace(/pi/g, "Math.PI")
-        .replace(/e\*\*/g, "Math.exp") // handles e^x
-        .replace(/([^a-z]|^)e([^a-z]|$)/g, "$1Math.E$2");
+        .replace(/\)([\d(a-z])/g, ")*$1")  // Handles (x+1)2, etc.
+        .replace(/\^/g, "**");
 
       const evaluator = new Function("x", `
+        const e = Math.E;
+        const pi = Math.PI;
+        const sin = Math.sin;
+        const cos = Math.cos;
+        const tan = Math.tan;
+        const exp = Math.exp;
+        const ln = Math.log;
+        const log = Math.log;
+        const sqrt = Math.sqrt;
+        const abs = Math.abs;
+        const pow = Math.pow;
         try {
           return ${formatted};
         } catch(e) {
@@ -107,18 +110,21 @@ export default function MathFunctionSection({
         .replace(/\s+/g, "")
         .replace(/(\d)([a-z])/g, "$1*$2") // Handles 2x, 2m, etc.
         .replace(/(\d)\(/g, "$1*(")       // Handles 2(x+1)
-        .replace(/\^/g, "**")
-        .replace(/sin/g, "Math.sin")
-        .replace(/cos/g, "Math.cos")
-        .replace(/tan/g, "Math.tan")
-        .replace(/exp/g, "Math.exp")
-        .replace(/ln/g, "Math.log")
-        .replace(/sqrt/g, "Math.sqrt")
-        .replace(/pi/g, "Math.PI")
-        .replace(/e\*\*/g, "Math.exp") // handles e^x
-        .replace(/([^a-z]|^)e([^a-z]|$)/g, "$1Math.E$2");
+        .replace(/\)([\d(a-z])/g, ")*$1")
+        .replace(/\^/g, "**");
 
       const evaluator = new Function("x", "m", `
+        const e = Math.E;
+        const pi = Math.PI;
+        const sin = Math.sin;
+        const cos = Math.cos;
+        const tan = Math.tan;
+        const exp = Math.exp;
+        const ln = Math.log;
+        const log = Math.log;
+        const sqrt = Math.sqrt;
+        const abs = Math.abs;
+        const pow = Math.pow;
         try {
           return ${formatted};
         } catch(e) {
@@ -1299,6 +1305,38 @@ f(x) = ${expression}
                 </div>
               </div>
 
+              {/* Math Helper Keyboard */}
+              <div className="bg-[#0f172a]/60 p-2.5 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 font-bold font-sans">لوحة الرموز المساعدة 📐⌨️</span>
+                  <button 
+                    onClick={clearExpression} 
+                    className="text-[10px] bg-rose-950/35 hover:bg-rose-900/40 text-rose-400 font-bold px-2 py-0.5 rounded border border-rose-900/35 transition cursor-pointer"
+                  >
+                    مسح C
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 font-sans pb-1 text-center">
+                  <button onClick={() => insertSymbol("x")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x</button>
+                  <button onClick={() => insertSymbol("e^x")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">e^x</button>
+                  <button onClick={() => insertSymbol("ln")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">ln(x)</button>
+                  <button onClick={() => insertSymbol("sqrt")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans font-sans">√x</button>
+                  <button onClick={() => insertSymbol("^2")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x²</button>
+
+                  <button onClick={() => insertSymbol("^3")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x³</button>
+                  <button onClick={() => insertSymbol("sin")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-[11px] font-mono transition active:scale-95 cursor-pointer font-sans">sin</button>
+                  <button onClick={() => insertSymbol("cos")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-[11px] font-mono transition active:scale-95 cursor-pointer font-sans">cos</button>
+                  <button onClick={() => insertSymbol("pi")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">π</button>
+                  <button onClick={() => insertSymbol("/")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">/</button>
+
+                  <button onClick={() => insertSymbol("*")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">*</button>
+                  <button onClick={() => insertSymbol("+")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">+</button>
+                  <button onClick={() => insertSymbol("-")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">-</button>
+                  <button onClick={() => insertSymbol("(")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">(</button>
+                  <button onClick={() => insertSymbol(")")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">)</button>
+                </div>
+              </div>
+
               {/* Study the Function AI Button directly next to formula writing */}
               <button
                 onClick={studyFunctionWithAI}
@@ -2042,6 +2080,38 @@ f(x) = ${expression}
                     placeholder="مثال: (x^2 - 1) / (x - 2)"
                     className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-16 pr-4 py-2 text-left font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
+                </div>
+              </div>
+
+              {/* Math Helper Keyboard */}
+              <div className="bg-[#0f172a]/60 p-2.5 rounded-xl border border-slate-800/80 space-y-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 font-bold font-sans">لوحة الرموز المساعدة 📐⌨️</span>
+                  <button 
+                    onClick={clearExpression} 
+                    className="text-[10px] bg-rose-950/35 hover:bg-rose-900/40 text-rose-400 font-bold px-2 py-0.5 rounded border border-rose-900/35 transition cursor-pointer"
+                  >
+                    مسح C
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 font-sans pb-1 text-center">
+                  <button onClick={() => insertSymbol("x")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x</button>
+                  <button onClick={() => insertSymbol("e^x")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">e^x</button>
+                  <button onClick={() => insertSymbol("ln")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">ln(x)</button>
+                  <button onClick={() => insertSymbol("sqrt")} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">√x</button>
+                  <button onClick={() => insertSymbol("^2")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x²</button>
+
+                  <button onClick={() => insertSymbol("^3")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer">x³</button>
+                  <button onClick={() => insertSymbol("sin")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-[11px] font-mono transition active:scale-95 cursor-pointer font-sans">sin</button>
+                  <button onClick={() => insertSymbol("cos")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-[11px] font-mono transition active:scale-95 cursor-pointer font-sans">cos</button>
+                  <button onClick={() => insertSymbol("pi")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">π</button>
+                  <button onClick={() => insertSymbol("/")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">/</button>
+
+                  <button onClick={() => insertSymbol("*")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">*</button>
+                  <button onClick={() => insertSymbol("+")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">+</button>
+                  <button onClick={() => insertSymbol("-")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">-</button>
+                  <button onClick={() => insertSymbol("(")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">(</button>
+                  <button onClick={() => insertSymbol(")")} className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg border border-slate-700 font-bold text-xs font-mono transition active:scale-95 cursor-pointer font-sans">)</button>
                 </div>
               </div>
 
