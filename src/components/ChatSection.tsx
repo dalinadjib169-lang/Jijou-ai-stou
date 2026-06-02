@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Image as ImageIcon, Sparkles, Loader2, RefreshCw, Smartphone, Check, HelpCircle, ArrowDown, Volume2, VolumeX } from "lucide-react";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
 import { Message } from "../types";
 
 interface ChatSectionProps {

@@ -35,6 +35,13 @@ export default function MathFunctionSection({
   const [isStudyFollowUpLoading, setIsStudyFollowUpLoading] = useState(false);
   const [isAskingAi, setIsAskingAi] = useState(false);
   const [subTab, setSubTab] = useState<"plotter" | "analytical">("plotter");
+
+  // AI-generated variation table states
+  const [variationTableMode, setVariationTableMode] = useState<"instant" | "ai">("instant");
+  const [isGeneratingAiTable, setIsGeneratingAiTable] = useState(false);
+  const [aiTableData, setAiTableData] = useState<any>(null);
+  const [aiTableError, setAiTableError] = useState<string | null>(null);
+  const [aiStudiedExpression, setAiStudiedExpression] = useState<string>("");
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,9 +95,17 @@ export default function MathFunctionSection({
     for (let x = scanMin; x <= scanMax; x += step) {
       const val = evaluateFunc(expression, x);
       if (isNaN(val) || !isFinite(val)) {
-        const rounded = Math.round(x * 10) / 10;
-        if (!forbidden.includes(rounded)) {
-          forbidden.push(rounded);
+        // A point is a true forbidden value only if it's a boundary or single discontinuity,
+        // which means the function must be defined immediately to its left or to its right.
+        const leftVal = evaluateFunc(expression, x - 0.15);
+        const rightVal = evaluateFunc(expression, x + 0.15);
+        const isNeighbourDefined = (!isNaN(leftVal) && isFinite(leftVal)) || (!isNaN(rightVal) && isFinite(rightVal));
+
+        if (isNeighbourDefined) {
+          const rounded = Math.round(x * 10) / 10;
+          if (!forbidden.includes(rounded)) {
+            forbidden.push(rounded);
+          }
         }
       }
     }
@@ -380,6 +395,133 @@ export default function MathFunctionSection({
 
   const criticalPointsList = getCriticalPoints();
 
+  const getSortedKeyPoints = () => {
+    const points: { x: number; label?: string; isForbidden: boolean; isCritical: boolean; isTangent: boolean }[] = [];
+    
+    // Add forbidden values
+    forbiddenValues.forEach(v => {
+      if (!points.some(p => Math.abs(p.x - v) < 0.05)) {
+        points.push({ x: v, label: "قيمة ممنوعة", isForbidden: true, isCritical: false, isTangent: false });
+      }
+    });
+
+    // Add critical points
+    criticalPointsList.forEach(cp => {
+      if (!points.some(p => Math.abs(p.x - cp.x) < 0.05)) {
+        const roundedX = Math.round(cp.x * 100) / 100;
+        points.push({ x: roundedX, label: cp.type === "max" ? "ذروة كبرى" : "ذروة صغرى", isForbidden: false, isCritical: true, isTangent: false });
+      }
+    });
+
+    // Add tangent point (student input x0)
+    if (showTangent && typeof tangentPoint === "number" && !isNaN(tangentPoint)) {
+      const existing = points.find(p => Math.abs(p.x - tangentPoint) < 0.05);
+      if (existing) {
+        existing.isTangent = true;
+        existing.label = existing.label ? `${existing.label} + نقطة تماس` : "نقطة التماس x₀";
+      } else {
+        const roundedTangent = Math.round(tangentPoint * 100) / 100;
+        points.push({ x: roundedTangent, label: "نقطة التماس x₀", isForbidden: false, isCritical: false, isTangent: true });
+      }
+    }
+
+    // Sort by x coordinate ascending
+    points.sort((a, b) => a.x - b.x);
+    return points;
+  };
+
+  const getDynamicVariationPoints = () => {
+    const pts = getSortedKeyPoints();
+    const columns: any[] = [];
+    
+    // Start with -∞ point
+    const yMinusInf = evaluateFunc(expression, -20);
+    let limitMinusInf = "-∞";
+    if (!isNaN(yMinusInf) && isFinite(yMinusInf)) {
+      limitMinusInf = yMinusInf.toFixed(1);
+    } else {
+      const nearLeft = evaluateFunc(expression, -15);
+      const farLeft = evaluateFunc(expression, -25);
+      if (!isNaN(nearLeft) && !isNaN(farLeft)) {
+        limitMinusInf = nearLeft > farLeft ? "+∞" : "-∞";
+      }
+    }
+    
+    columns.push({
+      type: "point",
+      x: "-∞",
+      f_prime: "",
+      f_val: limitMinusInf,
+      is_boundary: true
+    });
+    
+    for (let i = 0; i < pts.length; i++) {
+      const currentPt = pts[i];
+      // Interval before this point
+      const prevX = i === 0 ? -12 : pts[i - 1].x;
+      const midX = (prevX + currentPt.x) / 2;
+      const derivSign = computeDerivative(midX);
+      const isUp = isNaN(derivSign) ? (evaluateFunc(expression, currentPt.x - 0.15) < evaluateFunc(expression, currentPt.x)) : (derivSign > 0);
+      
+      columns.push({
+        type: "arrow",
+        f_prime: isUp ? "+" : "-",
+        direction: isUp ? "up" : "down"
+      });
+      
+      // The point itself
+      const fValNumber = evaluateFunc(expression, currentPt.x);
+      const fValStr = currentPt.isForbidden ? "||" : (isNaN(fValNumber) || !isFinite(fValNumber) ? "||" : fValNumber.toFixed(1));
+      const fPrimeStr = currentPt.isForbidden ? "||" : (currentPt.isCritical ? "0" : (computeDerivative(currentPt.x).toFixed(1)));
+      
+      columns.push({
+        type: "point",
+        x: currentPt.x.toString(),
+        label: currentPt.label,
+        f_prime: fPrimeStr,
+        f_val: fValStr,
+        is_forbidden: currentPt.isForbidden,
+        is_peak: currentPt.isCritical,
+        is_tangent: currentPt.isTangent
+      });
+    }
+    
+    // Last Interval
+    const lastX = pts.length > 0 ? pts[pts.length - 1].x : 0;
+    const midLast = lastX + 3;
+    const derivSignLast = computeDerivative(midLast);
+    const isUpLast = isNaN(derivSignLast) ? (evaluateFunc(expression, lastX + 1.5) > evaluateFunc(expression, lastX + 0.5)) : (derivSignLast > 0);
+    
+    columns.push({
+      type: "arrow",
+      f_prime: isUpLast ? "+" : "-",
+      direction: isUpLast ? "up" : "down"
+    });
+    
+    // End with +∞ point
+    const yPlusInf = evaluateFunc(expression, 20);
+    let limitPlusInf = "+∞";
+    if (!isNaN(yPlusInf) && isFinite(yPlusInf)) {
+      limitPlusInf = yPlusInf.toFixed(1);
+    } else {
+      const nearRight = evaluateFunc(expression, 15);
+      const farRight = evaluateFunc(expression, 25);
+      if (!isNaN(nearRight) && !isNaN(farRight)) {
+        limitPlusInf = farRight > nearRight ? "+∞" : "-∞";
+      }
+    }
+    
+    columns.push({
+      type: "point",
+      x: "+∞",
+      f_prime: "",
+      f_val: limitPlusInf,
+      is_boundary: true
+    });
+    
+    return columns;
+  };
+
   const checkMVT_Result = () => {
     const yA = evaluateFunc(expression, intervalA);
     const yB = evaluateFunc(expression, intervalB);
@@ -638,24 +780,95 @@ export default function MathFunctionSection({
     return reply;
   };
 
+  // Helper to generate AI-assisted variation table database/view
+  const generateAiVariationTable = async () => {
+    setIsGeneratingAiTable(true);
+    setAiTableError(null);
+    setVariationTableMode("ai");
+    
+    const prompt = `أهلاً بك يا أستاذ دالي. نريد منك دراسة الدالة الرياضية التالية f(x) = ${expression} وتوليد جدول التغيرات التفصيلي الدقيق لها بالكامل للبكالوريا الجزائرية بصيغة JSON فقط وبشكل صحيح تماماً.
+
+يرجى إشراك المفهوم الرياضي الصحيح والتفصيلي التام. يرجى إرجاع كائن JSON دقيق جداً بالتصميم التالي (دون أي نصوص إضافية خارج الـ JSON على الإطلاق):
+{
+  "domain": "مجموعة تعريف الدالة بالتفصيل، مثل: D_f = ℝ - {2} أو D_f = ]0, +∞[",
+  "points": [
+    { "type": "point", "x": "-∞", "f_prime": "", "f_val": "-∞" },
+    { "type": "arrow", "f_prime": "+", "direction": "up" },
+    { "type": "point", "x": "1", "f_prime": "0", "f_val": "3", "is_peak": true, "label": "ذروة كبرى" },
+    { "type": "arrow", "f_prime": "-", "direction": "down" },
+    { "type": "point", "x": "2", "f_prime": "||", "f_val": "||", "is_forbidden": true, "label": "قيمة ممنوعة" },
+    { "type": "arrow", "f_prime": "-", "direction": "down" },
+    { "type": "point", "x": "+∞", "f_prime": "", "f_val": "+∞" }
+  ],
+  "asymptotes": ["المقارب العمودي x = 2", "المقارب المائل y = x + 2 بجوار +∞"],
+  "criticalPoints": ["نقطة ذروة عظمى عند x = 1 بقيمة 3"],
+  "explanation": "الدالة متناقصة تماماً على المجالات المحددة بمشتقة سالبة، ومتزايدة عند المشتقة الموجبة."
+}
+
+قواعد هامة جداً:
+1. يجب أن تتناوب العناصر في مصفوفة "points" بحيث تبدأ بـ "point" تليها "arrow" تليها "point" وهكذا بالتناوب لتشكل جدولاً متناسقاً.
+2. الحقل "direction" يجب أن يكون "up" (للسهم المتصاعد ↗) أو "down" (للسهم المتنازل ↘).
+3. ضع المشتقة "f_prime" في عناصر "arrow" لتمثيل إشارة المشتقة على ذاك المجال الفرعي (+ أو -)، وفي عناصر "point" ضع "0" عند نقاط الانعدام (الذروات) أو "||" عند القيم الممنوعة أو اتركه فارغاً للأطراف اللانهائية.
+4. أرجع كود الـ JSON مباشرة بشكل صالح للصياغة والتحليل البرمجي ككود JSON نظيف وخالٍ من أي تعليقات.`;
+
+    try {
+      const reply = await callGeminiAPI(prompt);
+      let cleanResponse = reply.trim();
+      
+      // Clean up markdown block if existing
+      if (cleanResponse.includes("```")) {
+        const parts = cleanResponse.split("```");
+        for (const part of parts) {
+          if (part.startsWith("json")) {
+            cleanResponse = part.substring(4).trim();
+            break;
+          } else if (part.trim().startsWith("{") || part.trim().startsWith("[")) {
+            cleanResponse = part.trim();
+            break;
+          }
+        }
+      }
+      cleanResponse = cleanResponse.replace(/^```json/, "").replace(/```$/, "").trim();
+      
+      const parsedData = JSON.parse(cleanResponse);
+      if (parsedData && parsedData.points) {
+        setAiTableData(parsedData);
+        setAiStudiedExpression(expression);
+      } else {
+        throw new Error("تنسيق الـ JSON المسترجع من الذكاء الاصطناعي لم يكن بالهيكل المطلوب.");
+      }
+    } catch (error: any) {
+      console.error("AI Table generation error:", error);
+      setAiTableError(`فشل توليد جدول التغيرات بالذكاء الاصطناعي: ${error?.message || error}`);
+      setVariationTableMode("instant");
+    } finally {
+      setIsGeneratingAiTable(false);
+    }
+  };
+
   // AI study function representing the core user requirement: "دراسة الدالة بالذكاء الاصطناعي مع حلول وتفاصيل"
   const studyFunctionWithAI = async () => {
     setIsStudyingByAi(true);
     setAiStudyResult(null);
     setStudyFollowUpHistory([]);
     setStudyFollowUpText("");
+    
+    // Concurrently trigger AI variation table calculation
+    generateAiVariationTable();
+
     try {
       const prompt = `أهلاً بك يا أستاذ دالي. أرجو منك دراسة وتحليل الدالة الرياضية التالية دراسة مركزة ومفصلة لباكلوريا الجزائر f(x) = ${expression}.
-يرجى إعطاء شرح مقسم لخطوات واضحة باللغة العربية بأسلوبك الجزائري الودود المحفز (الأستاذ دالي نجيب):
-1. **النهايات والمستقيمات المقاربة:** بشكل موجز ورياضي دقيق وأطراف مجموعة التعريف.
-2. **المشتقة وجدول التغيرات:** احسب f'(x) واشرح إشارتها والاتجاه.
-3. **المماس:** معادلة المماس عند x₀ = ${tangentPoint}.
-4. **مبرهنة القيم المتوسطة:** للحلول f(x) = 0 على المجال [${intervalA}, ${intervalB}].
-5. **المناقشة البيانية f(x) = m:** شرح خلاصة إشارة وعدد الحلول.
-أجب بتنظيم مثالي ورائع، مع الحفاظ على سرعة واختصار بيداغوجي ذكي لتحفيز التلميذ!`;
+      يرجى إعطاء شرح مقسم لخطوات واضحة باللغة العربية بأسلوبك الجزائري الودود المحفز (الأستاذ دالي نجيب):
+      1. **النهايات والمستقيمات المقاربة:** بشكل موجز ورياضي دقيق وأطراف مجموعة التعريف.
+      2. **المشتقة وجدول التغيرات:** احسب f'(x) واشرح إشارتها والاتجاه.
+      3. **المماس:** معادلة المماس عند x₀ = ${tangentPoint}.
+      4. **مبرهنة القيم المتوسطة:** للحلول f(x) = 0 على المجال [${intervalA}, ${intervalB}].
+      5. **المناقشة البيانية f(x) = m:** شرح خلاصة إشارة وعدد الحلول.
+      أجب بتنظيم مثالي ورائع، مع الحفاظ على سرعة واختصار بيداغوجي ذكي لتحفيز التلميذ!`;
 
       const reply = await callGeminiAPI(prompt);
       setAiStudyResult(reply);
+      setAiStudiedExpression(expression);
     } catch (error: any) {
       console.error(error);
       const errMsg = error?.message || String(error);
@@ -973,6 +1186,11 @@ f(x) = ${expression}
                       <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
                     </span>
                   </div>
+                  {aiStudiedExpression && aiStudiedExpression !== expression && (
+                    <div className="bg-amber-950/40 text-amber-300 p-2.5 rounded-lg text-[10.5px] border border-amber-500/20 font-bold leading-normal mb-2">
+                       ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
+                    </div>
+                  )}
                   <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
                     {aiStudyResult}
                   </div>
@@ -1248,98 +1466,270 @@ f(x) = ${expression}
 
           {/* Table of Variations - جدول التغيرات تفاعلي وواضح */}
           <div className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-right ${subTab === "analytical" ? "hidden" : ""}`}>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-150">
-              <span className="text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200 font-bold font-mono">Df نشيط</span>
-              <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
-                جدول تغيرات الدالة f(x) التفاعلي
-                <HelpCircle className="w-5 h-5 text-emerald-600" />
-              </h4>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-150 gap-2">
+              {/* Segmented Controller to toggle modes */}
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-xs text-xs font-bold gap-1 order-2 sm:order-1">
+                <button
+                  onClick={() => setVariationTableMode("ai")}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-center cursor-pointer transition-all ${
+                    variationTableMode === "ai"
+                      ? "bg-white text-emerald-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  🤖 بالذكاء الاصطناعي (دالي)
+                </button>
+                <button
+                  onClick={() => setVariationTableMode("instant")}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-center cursor-pointer transition-all ${
+                    variationTableMode === "instant"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  📊 حاسب فوري
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 justify-end order-1 sm:order-2">
+                <span className="text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200 font-bold font-mono">
+                  {variationTableMode === "ai" && aiTableData ? aiTableData.domain : "Df نشيط"}
+                </span>
+                <h4 className="text-slate-800 font-black text-base flex items-center gap-2 justify-end">
+                  جدول تغيرات الدالة f(x)
+                  <HelpCircle className="w-5 h-5 text-emerald-600" />
+                </h4>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-center text-xs md:text-sm font-bold border-collapse border border-slate-200">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-600">
-                    <th className="border border-slate-200 p-2 w-16">المجال</th>
-                    <th className="border border-slate-200 p-2 font-mono">-∞</th>
-                    {forbiddenValues.map((fv) => (
-                      <React.Fragment key={`fv-${fv}`}>
-                        <th className="border border-slate-200 p-2 text-rose-500 font-mono">{fv} (ممنوعة)</th>
-                      </React.Fragment>
-                    ))}
-                    {criticalPointsList.map((pt) => (
-                      <React.Fragment key={`crit-${pt.x}`}>
-                        <th className="border border-slate-200 p-2 text-amber-600 font-mono">{pt.x} (ذروة)</th>
-                      </React.Fragment>
-                    ))}
-                    <th className="border border-slate-200 p-2 font-mono">+∞</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Derivative Row */}
-                  <tr className="text-slate-700 bg-white">
-                    <td className="border border-slate-200 p-2 font-black bg-slate-50">إشارة f'(x)</td>
-                    <td className="border border-slate-200 p-2 font-mono">
-                      {computeDerivative(-5) > 0 ? "+" : "-"}
-                    </td>
-                    {forbiddenValues.map((fv) => (
-                      <React.Fragment key={`fv-d-${fv}`}>
-                        <td className="border border-slate-200 p-2 text-rose-500 font-bold font-mono">||</td>
-                        <td className="border border-slate-200 p-2 font-mono">
-                          {computeDerivative(fv + 0.1) > 0 ? "+" : "-"}
-                        </td>
-                      </React.Fragment>
-                    ))}
-                    {criticalPointsList.map((pt) => (
-                      <React.Fragment key={`crit-d-${pt.x}`}>
-                        <td className="border border-slate-200 p-2 text-amber-600 font-bold font-mono">0</td>
-                        <td className="border border-slate-200 p-2 font-mono">
-                          {computeDerivative(pt.x + 0.5) > 0 ? "+" : "-"}
-                        </td>
-                      </React.Fragment>
-                    ))}
-                    <td className="border border-slate-200 p-2 font-mono"></td>
-                  </tr>
-                  
-                  {/* Function Values & Arrows Row */}
-                  <tr className="text-slate-800 bg-slate-50/30">
-                    <td className="border border-slate-200 p-3 font-black bg-slate-50">تغيرات f(x)</td>
-                    <td className="border border-slate-200 p-3 text-slate-500 text-[10px]">
-                      {evaluateFunc(expression, -10) > 0 ? "متناقصة..." : "متزايدة..."}
-                    </td>
-                    {forbiddenValues.map((fv) => {
-                      const leftSign = evaluateFunc(expression, fv - 0.05) > 0 ? "↗" : "↘";
-                      const rightSign = evaluateFunc(expression, fv + 0.05) > 0 ? "↗" : "↘";
-                      return (
-                        <React.Fragment key={`fv-f-${fv}`}>
-                          <td className="border-x border-slate-200 p-3 text-rose-500 font-extrabold text-base">||</td>
-                          <td className="border border-slate-200 p-3 text-emerald-600 text-sm">
-                            {rightSign}
-                          </td>
-                        </React.Fragment>
-                      );
-                    })}
-                    {criticalPointsList.map((pt) => (
-                      <React.Fragment key={`crit-f-${pt.x}`}>
-                        <td className="border border-slate-200 p-3 text-amber-600 text-xs">
-                          f({pt.x}) = <strong className="font-mono text-slate-800">{pt.y}</strong>
-                        </td>
-                        <td className="border border-slate-200 p-3 text-emerald-600 text-sm">
-                          {computeDerivative(pt.x + 0.5) > 0 ? "↗" : "↘"}
-                        </td>
-                      </React.Fragment>
-                    ))}
-                    <td className="border border-slate-200 p-3 text-slate-500 text-[10px]">
-                      {evaluateFunc(expression, 10) > evaluateFunc(expression, 5) ? "↗ متزايدة" : "↘ متناقصة"}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {variationTableMode === "instant" ? (
+              /* INSTANT MATHEMATICAL MODE */
+              <div className="space-y-4">
+                {(() => {
+                  const instantPoints = getDynamicVariationPoints();
+                  return (
+                    <div className="overflow-x-auto scrollbar-thin">
+                      <table className="w-full text-center text-xs md:text-sm font-bold border-collapse border border-slate-200 min-w-[500px]">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-600">
+                            <th className="border border-slate-200 p-2.5 w-24">الفاصلة x</th>
+                            {instantPoints.map((pt: any, idx: number) => (
+                              <th 
+                                key={`inst-h-${idx}`} 
+                                className={`border border-slate-200 p-2.5 font-mono ${
+                                  pt.type === "arrow" ? "w-12 bg-slate-50/10" : ""
+                                } ${pt.is_forbidden ? "text-rose-500 bg-rose-50/20 border-x-2 border-x-rose-400/50" : pt.is_peak ? "text-amber-500" : pt.is_tangent ? "text-emerald-500" : "text-slate-800"}`}
+                              >
+                                {pt.type === "point" ? (
+                                  <div className="flex flex-col items-center">
+                                    <span>{pt.x}</span>
+                                    {pt.label && <span className="text-[9px] text-slate-400 font-sans mt-0.5 font-normal">({pt.label})</span>}
+                                  </div>
+                                ) : (
+                                  ""
+                                )}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Derivative f'(x) Row */}
+                          <tr className="bg-white text-slate-700">
+                            <td className="border border-slate-200 p-2.5 font-black bg-slate-50 text-slate-850">إشارة f'(x)</td>
+                            {instantPoints.map((pt: any, idx: number) => (
+                              <td 
+                                key={`inst-d-${idx}`} 
+                                className={`border border-slate-200 p-2.5 font-mono ${
+                                  pt.is_forbidden ? "text-rose-500 font-extrabold bg-rose-50/10 border-x-2 border-x-rose-400/50" : pt.is_peak ? "text-amber-600 font-extrabold" : pt.is_tangent ? "text-emerald-600 font-bold" : ""
+                                }`}
+                              >
+                                {pt.type === "arrow" ? pt.f_prime : pt.f_prime}
+                              </td>
+                            ))}
+                          </tr>
 
-            <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
-              💡 يظهر الرمز <span className="text-rose-500">||</span> خطوط حائطية عمودية دلالة على عدم استمرارية الدالة بسبب وجود قيمة ممنوعة في المقام.
-            </p>
+                          {/* Variations f(x) Row */}
+                          <tr className="bg-slate-50/20 text-slate-800">
+                            <td className="border border-slate-200 p-3 font-black bg-slate-50 text-slate-850">تغيرات f(x)</td>
+                            {instantPoints.map((pt: any, idx: number) => (
+                              <td 
+                                key={`inst-v-${idx}`} 
+                                className={`border border-slate-200 p-3 font-semibold ${
+                                  pt.type === "arrow" ? "text-lg text-emerald-600 font-bold" : pt.is_forbidden ? "text-rose-600 font-extrabold bg-rose-50/20 border-x-2 border-x-rose-400/50" : "font-mono"
+                                }`}
+                              >
+                                {pt.type === "arrow" ? (
+                                  pt.direction === "up" ? "↗" : "↘"
+                                ) : (
+                                  pt.f_val
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+                <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+                  💡 جدول التغيرات الفوري يتفاعل ديناميكياً مع دستور الدالة، ويقوم بفرز وتصحيح ترتيب مواضع القيم الممنوعة <span className="text-rose-500 font-bold">(||)</span>، الذروات المحلية ونقطة مماس التلميذ المدخلة!
+                </p>
+              </div>
+            ) : (
+              /* DYNAMIC AI-DRIVEN MODE */
+              <div className="space-y-4">
+                {aiTableData && aiStudiedExpression && aiStudiedExpression !== expression && (
+                  <div className="bg-amber-950/5 border border-amber-500/20 text-slate-700 p-3.5 rounded-xl text-xs font-bold text-right flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                    <span className="leading-relaxed">⚠️ تغيير الدالة! جدول الأستاذ دالي بالذكاء الاصطناعي لا يزال يعرض دراسة الدالة السابقة: <code className="font-mono bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px]">{aiStudiedExpression}</code></span>
+                    <button
+                      onClick={generateAiVariationTable}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] sm:text-xs transition active:scale-95 cursor-pointer whitespace-nowrap self-end sm:self-auto shadow-sm"
+                    >
+                      تحديث الجدول بالذكاء الاصطناعي 🧠✨
+                    </button>
+                  </div>
+                )}
+                {isGeneratingAiTable ? (
+                  <div className="bg-slate-50/50 p-8 rounded-2xl border border-dashed border-slate-200 text-center space-y-3">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-500" />
+                    <p className="text-xs font-bold text-slate-600">
+                      جاري تحليل اتجاه التغيرات وحساب النهايات الدقيقة بالذكاء الاصطناعي للأستاذ دالي...
+                    </p>
+                    <span className="text-[10px] text-slate-400">صلي على رسول الله فالدراسات دقيقة جداً وموجهة للبكالوريا 🇩🇿</span>
+                  </div>
+                ) : aiTableError ? (
+                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-center space-y-2">
+                    <p className="text-xs text-rose-700 font-bold">{aiTableError}</p>
+                    <button
+                      onClick={generateAiVariationTable}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-1.5 px-3 rounded-lg cursor-pointer"
+                    >
+                      إعادة المحاولة 🪄
+                    </button>
+                  </div>
+                ) : !aiTableData ? (
+                  <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center space-y-4">
+                    <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                      لم يتم توليد جدول التغيرات التفصيلي بالذكاء الاصطناعي (البكالوريا) بعد لهذه الدالة. اضغط أدناه للتوليد التلقائي الفوري!
+                    </p>
+                    <button
+                      onClick={generateAiVariationTable}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 px-4 rounded-xl shadow inline-flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                      <span>توليد جدول التغيرات ومقارباته بالـ AI 🪄</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* AI Table Renders Beautifully here */
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto scrollbar-thin">
+                      <table className="w-full text-center text-xs md:text-sm font-bold border-collapse border border-slate-200 min-w-[500px]">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-600">
+                            <th className="border border-slate-200 p-2.5 w-24">الفاصلة x</th>
+                            {aiTableData.points.map((pt: any, idx: number) => (
+                              <th 
+                                key={`ai-h-${idx}`} 
+                                className={`border border-slate-200 p-2.5 font-mono ${
+                                  pt.type === "arrow" ? "w-16" : ""
+                                } ${pt.is_forbidden ? "text-rose-500" : pt.is_peak ? "text-amber-500" : "text-slate-800"}`}
+                              >
+                                {pt.type === "point" ? (
+                                  <div className="flex flex-col items-center">
+                                    <span>{pt.x}</span>
+                                    {pt.label && <span className="text-[9px] text-slate-400 font-sans mt-0.5 font-normal">({pt.label})</span>}
+                                  </div>
+                                ) : (
+                                  ""
+                                )}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Derivative f'(x) Row */}
+                          <tr className="bg-white text-slate-700">
+                            <td className="border border-slate-200 p-2.5 font-black bg-slate-50 text-slate-850">إشارة f'(x)</td>
+                            {aiTableData.points.map((pt: any, idx: number) => (
+                              <td 
+                                key={`ai-d-${idx}`} 
+                                className={`border border-slate-200 p-2.5 font-mono ${
+                                  pt.is_forbidden ? "text-rose-500 font-extrabold" : pt.is_peak ? "text-amber-600 font-extrabold" : ""
+                                }`}
+                              >
+                                {pt.f_prime || (pt.type === "arrow" ? pt.f_prime : "")}
+                              </td>
+                            ))}
+                          </tr>
+
+                          {/* Variations f(x) Row */}
+                          <tr className="bg-slate-50/20 text-slate-800">
+                            <td className="border border-slate-200 p-3 font-black bg-slate-50 text-slate-850">تغيرات f(x)</td>
+                            {aiTableData.points.map((pt: any, idx: number) => (
+                              <td 
+                                key={`ai-v-${idx}`} 
+                                className={`border border-slate-200 p-3 font-semibold ${
+                                  pt.type === "arrow" ? "text-lg text-emerald-600 font-bold" : pt.is_forbidden ? "text-rose-600 font-extrabold" : "font-mono"
+                                }`}
+                              >
+                                {pt.type === "arrow" ? (
+                                  pt.direction === "up" ? "↗" : "↘"
+                                ) : (
+                                  pt.f_val
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Meta and helper text generated by the AI */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {aiTableData.asymptotes && aiTableData.asymptotes.length > 0 && (
+                        <div className="bg-emerald-950/5 p-3 rounded-xl border border-emerald-900/10 text-right space-y-1">
+                          <span className="text-xs font-black text-emerald-800 block">📐 المستقيمات المقاربة النظرية:</span>
+                          <ul className="list-disc list-inside text-[11px] text-slate-600 font-bold space-y-0.5">
+                            {aiTableData.asymptotes.map((as: string, idx: number) => (
+                              <li key={idx}>{as}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {aiTableData.criticalPoints && aiTableData.criticalPoints.length > 0 && (
+                        <div className="bg-amber-950/5 p-3 rounded-xl border border-amber-900/10 text-right space-y-1">
+                          <span className="text-xs font-black text-amber-800 block">📌 القيم الحدية والذروات المستنتجة:</span>
+                          <ul className="list-disc list-inside text-[11px] text-slate-600 font-bold space-y-0.5">
+                            {aiTableData.criticalPoints.map((cp: string, idx: number) => (
+                              <li key={idx}>{cp}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {aiTableData.explanation && (
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-right leading-relaxed text-[11px] font-semibold text-slate-500">
+                        <span className="font-bold text-slate-700 block mb-0.5">📝 تفسير اتجاه الرتابة بالتفصيل:</span>
+                        {aiTableData.explanation}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={generateAiVariationTable}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer bg-emerald-50/70 border border-emerald-100 hover:bg-emerald-50 px-2.5 py-1 rounded-md"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        <span>تحديث الدراسة والجدول بالذكاء الاصطناعي مجدداً 🪄</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* New Comprehensive Limits, Derivatives & Interactive Dialogue Station */}
@@ -1404,6 +1794,11 @@ f(x) = ${expression}
                       <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
                     </span>
                   </div>
+                  {aiStudiedExpression && aiStudiedExpression !== expression && (
+                    <div className="bg-amber-950/40 text-amber-300 p-2.5 rounded-lg text-[10.5px] border border-amber-500/20 font-bold leading-normal mb-2">
+                       ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
+                    </div>
+                  )}
                   <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
                     {aiStudyResult}
                   </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db, loginWithGoogle, OperationType, handleFirestoreError } from "../firebase";
+import { auth, loginWithGoogle } from "../firebase";
 import { signOut, User } from "firebase/auth";
 import { LogIn, LogOut, Save, Key, Plus, Trash2, Image as ImageIcon, CheckCircle, AlertTriangle, HelpCircle, Loader2 } from "lucide-react";
 

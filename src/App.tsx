@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon } from "lucide-react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
 import ChatSection from "./components/ChatSection";
 import MathFunctionSection from "./components/MathFunctionSection";
 import AdminSection from "./components/AdminSection";

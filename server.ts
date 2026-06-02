@@ -80,6 +80,14 @@ async function verifyFirebaseToken(idToken: string): Promise<string | null> {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Custom middleware adding robust security headers to protect from common web vulnerabilities
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 import fs from "fs";
 
 // Load Firebase configuration
@@ -91,6 +99,111 @@ const fbApp = initializeApp(firebaseConfig);
 const firestoreDb = firebaseConfig.firestoreDatabaseId
   ? getFirestore(fbApp, firebaseConfig.firestoreDatabaseId)
   : getFirestore(fbApp);
+
+const LOCAL_SETTINGS_PATH = path.join(process.cwd(), "dali-settings-fallback.json");
+
+// Helper to write settings to local fallback file
+function writeLocalSettings(data: any) {
+  try {
+    fs.writeFileSync(LOCAL_SETTINGS_PATH, JSON.stringify(data, null, 2), "utf8");
+  } catch (e) {
+    console.error("Failed to write fallback settings locally:", e);
+  }
+}
+
+// Helper to read settings from local fallback file
+function readLocalSettings(): any {
+  try {
+    if (fs.existsSync(LOCAL_SETTINGS_PATH)) {
+      return JSON.parse(fs.readFileSync(LOCAL_SETTINGS_PATH, "utf8"));
+    }
+  } catch (e) {
+    console.error("Failed to read fallback settings locally:", e);
+  }
+  return null;
+}
+
+// Global active flag indicating whether Firestore is fully provisioned & working
+let isFirestoreWorking = false;
+
+// Async self-invoking function to test if Firestore is working on startup
+async function checkFirestoreStatus() {
+  try {
+    const docRef = doc(firestoreDb, "settings", "dali");
+    await getDoc(docRef);
+    isFirestoreWorking = true;
+    console.log("🔥 [Firebase Status] Firestore database found and verified successfully.");
+  } catch (err: any) {
+    isFirestoreWorking = false;
+    console.warn("⚠️ [Firebase Status] Firestore database not working or permission denied. Bypassing active calls to prevent RPC error noise.");
+  }
+}
+
+// Run the Firestore availability check on startup
+checkFirestoreStatus();
+
+// Unified secure settings read function
+async function getSettingsData(): Promise<any> {
+  const fallbackDefaults = {
+    welcomeMessage: "مرحبا بيك خويا اختي انا الاستاذ دالي استاذ مادة رياضيات و مبرمج بذكاء اصطناعي كيفاش نقدر نساعدك؟",
+    profileImageUrl: "https://img.icons8.com/color/150/user-male-circle.png",
+    keyRotationMode: "sequential",
+    selectedKeyIndex: -1,
+    apiKeys: []
+  };
+
+  if (!isFirestoreWorking) {
+    const local = readLocalSettings();
+    return local || fallbackDefaults;
+  }
+
+  try {
+    const docRef = doc(firestoreDb, "settings", "dali");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        welcomeMessage: data.welcomeMessage || fallbackDefaults.welcomeMessage,
+        profileImageUrl: data.profileImageUrl || fallbackDefaults.profileImageUrl,
+        keyRotationMode: data.keyRotationMode || fallbackDefaults.keyRotationMode,
+        selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : fallbackDefaults.selectedKeyIndex,
+        apiKeys: Array.isArray(data.apiKeys) ? data.apiKeys : []
+      };
+    }
+  } catch (err) {
+    console.warn("[Get Settings DB Error] Reading local fallback:", err);
+  }
+
+  const local = readLocalSettings();
+  return local || fallbackDefaults;
+}
+
+// Unified secure settings write function
+async function saveSettingsData(payload: {
+  welcomeMessage: string;
+  profileImageUrl: string;
+  apiKeys: string[];
+  keyRotationMode: string;
+  selectedKeyIndex: number;
+}): Promise<boolean> {
+  // Always update locally as a durable backup
+  writeLocalSettings(payload);
+
+  if (!isFirestoreWorking) {
+    console.log("[Settings Cache] Settings saved locally (Firestore offline/inactive).");
+    return true;
+  }
+
+  try {
+    const docRef = doc(firestoreDb, "settings", "dali");
+    await setDoc(docRef, payload);
+    console.log("[Settings Cache] Settings saved successfully in Firestore.");
+    return true;
+  } catch (err) {
+    console.error("[Settings Cache DB Write Error]:", err);
+    return false;
+  }
+}
 
 // Core System Instruction for Professor Dali Persona
 const SYSTEM_INSTRUCTION = `أنت في كافة الردود تلعب دور "الأستاذ دالي نجيب" (Pro DZ Dali)، أستاذ قدير وخبير متأصل في كافة مواد المنهاج التعليمي الجزائري ومواكب لبرامج قطاع التربية الوطنية بالجزائر، مع تخصص دقيق وعميق استثنائي في مادة الرياضيات والذكاء الاصطناعي.
@@ -122,29 +235,25 @@ async function getRotatedApiKeys(): Promise<string[]> {
 
   // 2. Gather active keys from Firestore rotation settings
   try {
-    const docRef = doc(firestoreDb, "settings", "dali");
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const keys = data.apiKeys || [];
-      if (Array.isArray(keys)) {
-        // Decrypt the keys first before validating
-        const decryptedKeys = keys.map(k => decrypt(String(k).trim()));
+    const data = await getSettingsData();
+    const keys = data.apiKeys || [];
+    if (Array.isArray(keys)) {
+      // Decrypt the keys first before validating
+      const decryptedKeys = keys.map(k => decrypt(String(k).trim()));
 
-        // Filter keys starting with AIzaSy or having key characteristics and not containing masking dots
-        let validKeys = decryptedKeys.map(k => String(k).trim())
-          .filter(k => k.startsWith("AIzaSy") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
-        
-        if (validKeys.length === 0) {
-          validKeys = decryptedKeys.map(k => String(k).trim())
-            .filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
-        }
-        validKeys.forEach(k => {
-          if (!candidateKeys.includes(k)) {
-            candidateKeys.push(k);
-          }
-        });
+      // Filter keys starting with AIzaSy or having key characteristics and not containing masking dots
+      let validKeys = decryptedKeys.map(k => String(k).trim())
+        .filter(k => k.startsWith("AIzaSy") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
+      
+      if (validKeys.length === 0) {
+        validKeys = decryptedKeys.map(k => String(k).trim())
+          .filter(k => k.length > 20 && !k.includes(" ") && !k.includes("_") && !k.includes(".") && !k.includes("...") && !k.includes("…"));
       }
+      validKeys.forEach(k => {
+        if (!candidateKeys.includes(k)) {
+          candidateKeys.push(k);
+        }
+      });
     }
   } catch (error) {
     console.warn("[Key Rotation Firestore Error] Fallback env keys used:", error);
@@ -177,13 +286,9 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     let docMode = "sequential";
     let docIndex = -1;
     try {
-      const docRef = doc(firestoreDb, "settings", "dali");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const d = docSnap.data();
-        if (d.keyRotationMode) docMode = d.keyRotationMode;
-        if (typeof d.selectedKeyIndex === "number") docIndex = d.selectedKeyIndex;
-      }
+      const d = await getSettingsData();
+      if (d.keyRotationMode) docMode = d.keyRotationMode;
+      if (typeof d.selectedKeyIndex === "number") docIndex = d.selectedKeyIndex;
     } catch (e) {
       console.warn("Could not read dynamic mode options from Firestore:", e);
     }
@@ -388,17 +493,13 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
 // Secure endpoint to serve public welcome configurations to students without exposing any API keys
 app.get("/api/public/config", async (req: any, res: any) => {
   try {
-    const docRef = doc(firestoreDb, "settings", "dali");
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return res.json({
-        welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
-        profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
-        keyRotationMode: data.keyRotationMode || "sequential",
-        selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
-      });
-    }
+    const data = await getSettingsData();
+    return res.json({
+      welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+      profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
+      keyRotationMode: data.keyRotationMode || "sequential",
+      selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
+    });
   } catch (err) {
     console.warn("[REST Config Load Warning]:", err);
   }
@@ -424,37 +525,24 @@ app.get("/api/admin/get-settings", async (req: any, res: any) => {
       return res.status(403).json({ error: "عذراً يا بني، أنت غير مصرح لك بقراءة هذه الإعدادات الخاصة بالأستاذ." });
     }
 
-    const docRef = doc(firestoreDb, "settings", "dali");
-    const docSnap = await getDoc(docRef);
+    const data = await getSettingsData();
+    const rawApiKeys = data.apiKeys || [];
     
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const rawApiKeys = data.apiKeys || [];
-      
-      // Decrypt stored keys and mask them for display safety
-      const maskedApiKeys = rawApiKeys.map((k: string) => {
-        const decrypted = decrypt(k);
-        if (decrypted.length > 12) {
-          return `${decrypted.substring(0, 8)}...${decrypted.substring(decrypted.length - 4)}`;
-        }
-        return decrypted;
-      });
-
-      return res.json({
-        welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
-        profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
-        keyRotationMode: data.keyRotationMode || "sequential",
-        selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
-        apiKeys: maskedApiKeys // safe masked keys
-      });
-    }
+    // Decrypt stored keys and mask them for display safety
+    const maskedApiKeys = rawApiKeys.map((k: string) => {
+      const decrypted = decrypt(k);
+      if (decrypted.length > 12) {
+        return `${decrypted.substring(0, 8)}...${decrypted.substring(decrypted.length - 4)}`;
+      }
+      return decrypted;
+    });
 
     return res.json({
-      welcomeMessage: "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
-      profileImageUrl: "https://img.icons8.com/color/150/user-male-circle.png",
-      keyRotationMode: "sequential",
-      selectedKeyIndex: -1,
-      apiKeys: []
+      welcomeMessage: data.welcomeMessage || "مرحباً بكم يا أبطال في منصة الأستاذ دالي!",
+      profileImageUrl: data.profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png",
+      keyRotationMode: data.keyRotationMode || "sequential",
+      selectedKeyIndex: typeof data.selectedKeyIndex === "number" ? data.selectedKeyIndex : -1,
+      apiKeys: maskedApiKeys // safe masked keys
     });
 
   } catch (error: any) {
@@ -476,12 +564,8 @@ app.post("/api/admin/save-settings", async (req: any, res: any) => {
 
     // 1. We must handle keys carefully because the frontend might send back masked keys (e.g. AIzaSy...4xZ)
     // We should read the existing database keys first to preserve those unchanged!
-    const docRef = doc(firestoreDb, "settings", "dali");
-    const docSnap = await getDoc(docRef);
-    let originalEncryptedKeys: string[] = [];
-    if (docSnap.exists()) {
-      originalEncryptedKeys = docSnap.data().apiKeys || [];
-    }
+    const existingData = await getSettingsData();
+    const originalEncryptedKeys: string[] = existingData.apiKeys || [];
 
     const decryptedOriginalKeys = originalEncryptedKeys.map(k => decrypt(k));
 
@@ -518,7 +602,10 @@ app.post("/api/admin/save-settings", async (req: any, res: any) => {
       selectedKeyIndex: typeof selectedKeyIndex === "number" ? selectedKeyIndex : -1
     };
 
-    await setDoc(docRef, payload);
+    const success = await saveSettingsData(payload);
+    if (!success) {
+      throw new Error("Failed to save settings variables.");
+    }
 
     console.log(`[Admin Security] Saved settings for admin ${email}. Keys saved securely: ${encryptedKeysToSave.length}`);
     res.json({ success: true });
