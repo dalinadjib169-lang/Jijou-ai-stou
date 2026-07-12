@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
 interface MathFunctionSectionProps {
+  isDarkMode?: boolean;
   apiKeys?: string[];
   keyRotationMode?: "sequential" | "manual";
   selectedKeyIndex?: number;
@@ -15,6 +16,7 @@ export default function MathFunctionSection({
   apiKeys = [],
   keyRotationMode = "sequential",
   selectedKeyIndex = -1,
+  isDarkMode = true,
   onDeductPoint
 }: MathFunctionSectionProps) {
   const [expression, setExpression] = useState("(x^2 - 1) / (x - 2)");
@@ -1385,7 +1387,7 @@ f(x) = ${expression}
                        ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
                     </div>
                   )}
-                  <div className="text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 text-right font-sans shadow-sm prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                  <div className={`text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 text-right font-sans shadow-sm prose prose-sm max-w-none ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} prose-p:leading-relaxed markdown-body`} style={{ direction: "rtl" }}>
                     <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{aiStudyResult}</Markdown>
                   </div>
                   
@@ -1683,7 +1685,7 @@ f(x) = ${expression}
                   </button>
                   <span className="text-pink-700 font-black text-xs">التفسير الأكاديمي الشامل للمناقشة الوسيطية:</span>
                 </div>
-                <div className="text-xs sm:text-sm leading-relaxed max-h-72 overflow-y-auto pl-1 font-bold prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                <div className={`text-xs sm:text-sm leading-relaxed max-h-72 overflow-y-auto pl-1 font-bold prose prose-sm max-w-none ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} prose-p:leading-relaxed markdown-body`} style={{ direction: "rtl" }}>
                   <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{mStudyResult}</Markdown>
                 </div>
               </div>
@@ -1736,7 +1738,7 @@ f(x) = ${expression}
               )}
 
               {systemAnswer && !isAskingAi && (
-                <div className="bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right max-h-60 overflow-y-auto prose prose-sm max-w-none prose-p:leading-relaxed prose-headings:text-emerald-700 prose-strong:text-slate-900 markdown-body" dir="rtl">
+                <div className={`bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right max-h-60 overflow-y-auto prose prose-sm max-w-none prose-p:leading-relaxed ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} markdown-body`} dir="rtl">
                   <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                     {systemAnswer}
                   </Markdown>
@@ -2145,7 +2147,7 @@ f(x) = ${expression}
                        ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
                     </div>
                   )}
-                  <div className="text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                  <div className={`text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 prose prose-sm max-w-none ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} prose-p:leading-relaxed markdown-body`} style={{ direction: "rtl" }}>
                     <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{aiStudyResult}</Markdown>
                   </div>
 
@@ -2337,7 +2339,7 @@ f(x) = ${expression}
                       <span>x → {limitTarget === "custom" ? customLimitVal : limitTarget}</span>
                       <span>🔮 شرح النهاية بالخطوات والقوانين للأستاذ دالي:</span>
                     </div>
-                    <div className="text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                    <div className={`text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} prose-p:leading-relaxed markdown-body`} style={{ direction: "rtl" }}>
                       <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{limitExplanation}</Markdown>
                     </div>
                   </div>
@@ -2349,7 +2351,7 @@ f(x) = ${expression}
                       <span>x₀ = {derivPoint}</span>
                       <span>🎯 شرح حساب المشتقة والتعويض في معادلة المماس:</span>
                     </div>
-                    <div className="text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                    <div className={`text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none ${isDarkMode ? "prose-invert prose-headings:text-emerald-400 prose-strong:text-white" : "prose-headings:text-emerald-700 prose-strong:text-slate-900"} prose-p:leading-relaxed markdown-body`} style={{ direction: "rtl" }}>
                       <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{derivExplanation}</Markdown>
                     </div>
                   </div>

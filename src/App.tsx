@@ -558,7 +558,7 @@ export default function App() {
           ) : (
             <>
               {activeTab === "chat" && (
-                <ChatSection 
+                <ChatSection isDarkMode={isDarkMode} 
                   welcomeMessage={welcomeMessage} 
                   profileImageUrl={profileImageUrl} 
                   apiKeys={apiKeys}
@@ -569,7 +569,7 @@ export default function App() {
               )}
 
               {activeTab === "math" && (
-                <MathFunctionSection 
+                <MathFunctionSection isDarkMode={isDarkMode} 
                   apiKeys={apiKeys}
                   keyRotationMode={keyRotationMode}
                   selectedKeyIndex={selectedKeyIndex}

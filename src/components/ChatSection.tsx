@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
 interface ChatSectionProps {
+  isDarkMode?: boolean;
   welcomeMessage: string;
   profileImageUrl: string;
   apiKeys?: string[];
@@ -20,6 +21,7 @@ export default function ChatSection({
   apiKeys,
   keyRotationMode = "sequential",
   selectedKeyIndex = -1,
+  isDarkMode = true,
   onDeductPoint
 }: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -611,7 +613,7 @@ export default function ChatSection({
                        </div>
                      )}
 
-                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none text-white prose-invert prose-p:leading-relaxed prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800 markdown-body`}>
+                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none ${isDarkMode ? 'text-white prose-invert prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800' : 'text-slate-800 prose-headings:text-emerald-700 prose-a:text-emerald-600 prose-strong:text-slate-900 prose-pre:bg-slate-100 prose-pre:border-slate-200'} prose-p:leading-relaxed markdown-body`}>
                        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                          {msg.text}
                        </Markdown>

@@ -188,3 +188,27 @@
 .light-theme-wrapper nav button {
   color: #475569 !important;
 }
+
+/* Custom UI classes for AI Markdown styling (Adaptive to Dark/Light themes) */
+.color-primary { color: #34d399; font-weight: bold; } /* emerald-400 */
+.color-secondary { color: #fbbf24; font-weight: bold; } /* amber-400 */
+.color-accent { color: #60a5fa; font-weight: bold; } /* blue-400 */
+.color-danger { color: #f87171; font-weight: bold; } /* red-400 */
+.info-box { 
+  padding: 1rem; 
+  margin: 1rem 0; 
+  border: 2px solid #10b981; 
+  border-radius: 0.75rem; 
+  background-color: rgba(16, 185, 129, 0.1); 
+  color: #f8fafc;
+}
+
+.light-theme-wrapper .color-primary { color: #059669 !important; } /* emerald-600 */
+.light-theme-wrapper .color-secondary { color: #d97706 !important; } /* amber-600 */
+.light-theme-wrapper .color-accent { color: #2563eb !important; } /* blue-600 */
+.light-theme-wrapper .color-danger { color: #dc2626 !important; } /* red-600 */
+.light-theme-wrapper .info-box { 
+  border-color: #059669 !important; 
+  background-color: rgba(5, 150, 105, 0.05) !important; 
+  color: #0f172a !important;
+}
