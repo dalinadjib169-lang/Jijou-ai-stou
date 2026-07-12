@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Image as ImageIcon, Sparkles, Loader2, RefreshCw, Smartphone, Check, HelpCircle, ArrowDown, Volume2, VolumeX } from "lucide-react";
 import { Message } from "../types";
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface ChatSectionProps {
   welcomeMessage: string;
@@ -608,8 +611,10 @@ export default function ChatSection({
                        </div>
                      )}
 
-                     <div className={msg.sender === "assistant" ? "pl-7" : ""}>
-                       {msg.text}
+                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none text-white prose-invert prose-p:leading-relaxed prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800 markdown-body`}>
+                       <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                         {msg.text}
+                       </Markdown>
                      </div>
                    </div>
                    

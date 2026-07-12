@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles, HelpCircle, ArrowUpRight, Scale, Activity, Sliders, Hash, Info, Play, Keyboard, HelpCircle as QuestionIcon, CornerDownLeft, MessageSquare, Plus, RotateCcw, Loader2 } from "lucide-react";
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface MathFunctionSectionProps {
   apiKeys?: string[];
@@ -1382,8 +1385,8 @@ f(x) = ${expression}
                        ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
                     </div>
                   )}
-                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1 text-right font-sans shadow-sm" style={{ direction: "rtl" }}>
-                    {aiStudyResult}
+                  <div className="text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 text-right font-sans shadow-sm prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                    <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{aiStudyResult}</Markdown>
                   </div>
                   
                   {/* Interactive Student Follow-up Question Panel */}
@@ -1407,7 +1410,7 @@ f(x) = ${expression}
                                   ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
                                   : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
                               }`}>
-                                {msg.text}
+                                <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.text}</Markdown>
                               </div>
                             </div>
                           ))}
@@ -1680,8 +1683,8 @@ f(x) = ${expression}
                   </button>
                   <span className="text-pink-700 font-black text-xs">التفسير الأكاديمي الشامل للمناقشة الوسيطية:</span>
                 </div>
-                <div className="text-xs sm:text-sm leading-relaxed max-h-72 overflow-y-auto pl-1 whitespace-pre-wrap font-bold">
-                  {mStudyResult}
+                <div className="text-xs sm:text-sm leading-relaxed max-h-72 overflow-y-auto pl-1 font-bold prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                  <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{mStudyResult}</Markdown>
                 </div>
               </div>
             )}
@@ -1733,8 +1736,10 @@ f(x) = ${expression}
               )}
 
               {systemAnswer && !isAskingAi && (
-                <div className="bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right space-y-2 max-h-60 overflow-y-auto whitespace-pre-wrap">
-                  {systemAnswer}
+                <div className="bg-gradient-to-l from-emerald-50/70 to-teal-50/30 border border-emerald-200/60 rounded-xl p-4 text-xs text-slate-700 leading-relaxed text-right max-h-60 overflow-y-auto prose prose-sm max-w-none prose-p:leading-relaxed prose-headings:text-emerald-700 prose-strong:text-slate-900 markdown-body" dir="rtl">
+                  <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                    {systemAnswer}
+                  </Markdown>
                 </div>
               )}
             </div>
@@ -2140,8 +2145,8 @@ f(x) = ${expression}
                        ⚠️ تنبيه: لقد قمت بتغيير صيغة الدالة. هذه المخرجات تخص الدالة السابقة: <code className="bg-amber-950 px-1 py-0.5 rounded text-amber-200 font-mono">{aiStudiedExpression}</code>. برجاء إعادة الدراسة بالذكاء الاصطناعي لتحديث المخرجات.
                     </div>
                   )}
-                  <div className="text-xs sm:text-sm text-slate-100 whitespace-pre-line leading-relaxed max-h-80 overflow-y-auto pl-1">
-                    {aiStudyResult}
+                  <div className="text-xs sm:text-sm text-slate-100 leading-relaxed max-h-80 overflow-y-auto pl-1 prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                    <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{aiStudyResult}</Markdown>
                   </div>
 
                   {/* Interactive Student Follow-up Question Panel */}
@@ -2165,7 +2170,7 @@ f(x) = ${expression}
                                   ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
                                   : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
                               }`}>
-                                {msg.text}
+                                <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.text}</Markdown>
                               </div>
                             </div>
                           ))}
@@ -2332,9 +2337,9 @@ f(x) = ${expression}
                       <span>x → {limitTarget === "custom" ? customLimitVal : limitTarget}</span>
                       <span>🔮 شرح النهاية بالخطوات والقوانين للأستاذ دالي:</span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">
-                      {limitExplanation}
-                    </p>
+                    <div className="text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{limitExplanation}</Markdown>
+                    </div>
                   </div>
                 )}
 
@@ -2344,9 +2349,9 @@ f(x) = ${expression}
                       <span>x₀ = {derivPoint}</span>
                       <span>🎯 شرح حساب المشتقة والتعويض في معادلة المماس:</span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">
-                      {derivExplanation}
-                    </p>
+                    <div className="text-xs sm:text-sm text-slate-100 leading-relaxed prose prose-sm max-w-none prose-invert prose-p:leading-relaxed markdown-body" style={{ direction: "rtl" }}>
+                      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{derivExplanation}</Markdown>
+                    </div>
                   </div>
                 )}
 
@@ -2390,7 +2395,7 @@ f(x) = ${expression}
                         ? "bg-emerald-950/40 text-slate-100 rounded-tl-none border border-emerald-900/40" 
                         : "bg-[#111827] text-slate-200 rounded-tr-none border border-slate-800"
                     }`}>
-                      {turn.text}
+                      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{turn.text}</Markdown>
                     </div>
                   </div>
                 ))}
