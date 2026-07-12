@@ -7,31 +7,30 @@
 
 /* --- Peacefully looping, seamless keyframe animations for the Azkar ribbon --- */
 @keyframes marquee-rtl {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
 @keyframes marquee-ltr {
-  0% { transform: translate3d(-50%, 0, 0); }
-  100% { transform: translate3d(0, 0, 0); }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
 }
 
-.custom-marquee-scroll {
+.custom-marquee-block {
   display: flex;
-  width: max-content;
 }
 
-.custom-marquee-scroll.rtl {
+.custom-marquee-block.rtl {
   animation: marquee-rtl var(--marquee-duration, 120s) linear infinite;
   animation-play-state: var(--marquee-play-state, running);
 }
 
-.custom-marquee-scroll.ltr {
+.custom-marquee-block.ltr {
   animation: marquee-ltr var(--marquee-duration, 120s) linear infinite;
   animation-play-state: var(--marquee-play-state, running);
 }
 
-.custom-marquee-scroll:hover {
+.custom-marquee-block:hover {
   animation-play-state: paused;
 }
 

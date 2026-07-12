@@ -221,69 +221,73 @@ export default function DhikrTicker({ isDarkMode = true }: DhikrTickerProps) {
           isDarkMode ? "from-[#131b2e] via-[#131b2e]/60 to-transparent" : "from-white via-white/60 to-transparent"
         }`}></div>
 
-        <div className="w-full overflow-hidden">
-          <div 
-            className={`custom-marquee-scroll flex items-center whitespace-nowrap ${direction}`}
-            style={{
-              "--marquee-duration": duration,
-              "--marquee-play-state": isPaused ? "paused" : "running"
-            } as React.CSSProperties}
-          >
-            {/* Render 4 copies side-by-side to allow seamless continuous wrap-around without empty space */}
-            {[1, 2, 3, 4].map((trackNo) => (
-              <div key={`track-no-${trackNo}`} className="flex items-center gap-6 shrink-0 pl-8">
-                 {filteredDhikr.map((item, idx) => {
-                   let textColorClass = isDarkMode ? "text-slate-200" : "text-slate-800";
-                   let badgeColorClass = isDarkMode 
-                     ? "text-emerald-400 bg-emerald-950/80 border-emerald-900/50" 
-                     : "text-emerald-700 bg-emerald-50 border-emerald-200";
-                   let typeLabel = "ذكر";
-                   
-                   if (item.type === "quran") {
-                     textColorClass = isDarkMode 
-                       ? "text-red-400 font-bold drop-shadow-[0_0_3px_rgba(239,68,68,0.5)]" 
-                       : "text-red-700 font-extrabold";
-                     badgeColorClass = isDarkMode 
-                       ? "text-red-400 bg-red-950/80 border-red-900/50" 
-                       : "text-red-700 bg-red-50 border-red-200";
-                     typeLabel = "📖 قرآن كريم";
-                   } else if (item.type === "hadith") {
-                     textColorClass = isDarkMode 
-                       ? "text-orange-400 font-bold drop-shadow-[0_0_3px_rgba(249,115,22,0.55)]" 
-                       : "text-orange-700 font-extrabold";
-                     badgeColorClass = isDarkMode 
-                       ? "text-orange-400 bg-orange-950/80 border-orange-900/50" 
-                       : "text-orange-700 bg-orange-50 border-orange-200";
-                     typeLabel = "💬 حديث شريف";
-                   } else if (item.type === "dua") {
-                     textColorClass = isDarkMode 
-                       ? "text-emerald-400 font-bold drop-shadow-[0_0_3px_rgba(16,185,129,0.5)]" 
-                       : "text-emerald-700 font-extrabold";
-                     badgeColorClass = isDarkMode 
+        <div className="w-full overflow-hidden flex" dir="ltr">
+          {/* We use two identical blocks scrolling from 0 to -100% to create a perfect infinite loop */}
+          {[1, 2].map((blockNo) => (
+            <div 
+              key={`marquee-block-${blockNo}`}
+              className={`flex items-center shrink-0 custom-marquee-block ${direction}`}
+              style={{
+                "--marquee-duration": duration,
+                "--marquee-play-state": isPaused ? "paused" : "running"
+              } as React.CSSProperties}
+            >
+              {/* Ensure enough content width by repeating the items inside each block */}
+              {[1, 2, 3, 4].map((trackNo) => (
+                <div key={`track-no-${trackNo}`} className="flex items-center gap-6 shrink-0 pl-8">
+                   {filteredDhikr.map((item, idx) => {
+                     let textColorClass = isDarkMode ? "text-slate-200" : "text-slate-800";
+                     let badgeColorClass = isDarkMode 
                        ? "text-emerald-400 bg-emerald-950/80 border-emerald-900/50" 
-                       : "text-emerald-600 bg-emerald-50 border-emerald-200";
-                     typeLabel = "🤲 دعاء كريم";
-                   }
+                       : "text-emerald-700 bg-emerald-50 border-emerald-200";
+                     let typeLabel = "ذكر";
+                     
+                     if (item.type === "quran") {
+                       textColorClass = isDarkMode 
+                         ? "text-red-400 font-bold drop-shadow-[0_0_3px_rgba(239,68,68,0.5)]" 
+                         : "text-red-700 font-extrabold";
+                       badgeColorClass = isDarkMode 
+                         ? "text-red-400 bg-red-950/80 border-red-900/50" 
+                         : "text-red-700 bg-red-50 border-red-200";
+                       typeLabel = "📖 قرآن كريم";
+                     } else if (item.type === "hadith") {
+                       textColorClass = isDarkMode 
+                         ? "text-orange-400 font-bold drop-shadow-[0_0_3px_rgba(249,115,22,0.55)]" 
+                         : "text-orange-700 font-extrabold";
+                       badgeColorClass = isDarkMode 
+                         ? "text-orange-400 bg-orange-950/80 border-orange-900/50" 
+                         : "text-orange-700 bg-orange-50 border-orange-200";
+                       typeLabel = "💬 حديث شريف";
+                     } else if (item.type === "dua") {
+                       textColorClass = isDarkMode 
+                         ? "text-emerald-400 font-bold drop-shadow-[0_0_3px_rgba(16,185,129,0.5)]" 
+                         : "text-emerald-700 font-extrabold";
+                       badgeColorClass = isDarkMode 
+                         ? "text-emerald-400 bg-emerald-950/80 border-emerald-900/50" 
+                         : "text-emerald-600 bg-emerald-50 border-emerald-200";
+                       typeLabel = "🤲 دعاء كريم";
+                     }
 
-                   return (
-                     <span key={`ticker-item-${trackNo}-${idx}`} className="inline-flex items-center mx-5 select-none">
-                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ml-2.5 border ${badgeColorClass}`}>
-                         {typeLabel}
-                         <span className="opacity-70 font-medium mr-1">
-                           ({item.category === "morning" && "صباح"}
-                            {item.category === "evening" && "مساء"}
-                            {item.category === "sleep" && "نوم"}
-                            {item.category === "general" && "عام"})
+                     return (
+                       <span key={`ticker-item-${trackNo}-${idx}`} className="inline-flex items-center mx-5 select-none">
+                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ml-2.5 border ${badgeColorClass}`}>
+                           {typeLabel}
+                           <span className="opacity-70 font-medium mr-1">
+                             ({item.category === "morning" && "صباح"}
+                              {item.category === "evening" && "مساء"}
+                              {item.category === "sleep" && "نوم"}
+                              {item.category === "general" && "عام"})
+                           </span>
                          </span>
+                         <span className={`text-xs sm:text-sm tracking-wide leading-relaxed font-sans ${textColorClass}`}>{item.text}</span>
+                         <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 mr-4 shrink-0 animate-pulse" />
                        </span>
-                       <span className={`text-xs sm:text-sm tracking-wide leading-relaxed font-sans ${textColorClass}`}>{item.text}</span>
-                       <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 mr-4 shrink-0 animate-pulse" />
-                     </span>
-                   );
-                 })}
-              </div>
-            ))}
-          </div>
+                     );
+                   })}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 

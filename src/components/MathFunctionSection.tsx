@@ -5,12 +5,14 @@ interface MathFunctionSectionProps {
   apiKeys?: string[];
   keyRotationMode?: "sequential" | "manual";
   selectedKeyIndex?: number;
+  onDeductPoint?: () => boolean;
 }
 
 export default function MathFunctionSection({
   apiKeys = [],
   keyRotationMode = "sequential",
-  selectedKeyIndex = -1
+  selectedKeyIndex = -1,
+  onDeductPoint
 }: MathFunctionSectionProps) {
   const [expression, setExpression] = useState("(x^2 - 1) / (x - 2)");
   const [tangentPoint, setTangentPoint] = useState(3);
@@ -702,6 +704,10 @@ export default function MathFunctionSection({
     text: string, 
     history: {role: string; text: string}[] = []
   ): Promise<string> => {
+    if (onDeductPoint && !onDeductPoint()) {
+      throw new Error("عذراً، لقد استنفدت رصيدك من الأسئلة. يرجى إدخال كود تفعيل للمتابعة.");
+    }
+
     let backendSuccess = false;
     let reply = "";
     let backendErrorHint = "";

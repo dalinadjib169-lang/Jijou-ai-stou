@@ -44,6 +44,11 @@ export default function AdminSection({
   const [uploadLoading, setUploadLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Codes Generation state
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [codePoints, setCodePoints] = useState(50);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+
   useEffect(() => {
     // Sync local state when props change
     setProfileImage(profileImageUrl);
@@ -224,6 +229,30 @@ export default function AdminSection({
   };
 
   // Persist configurations inside firestore settings/dali document and localStorage fallback
+  const handleGenerateCode = async () => {
+    if (!user) return;
+    setIsGeneratingCode(true);
+    try {
+      const { db } = await import("../firebase");
+      const { setDoc, doc } = await import("firebase/firestore");
+      // generate a random 8 char alphanumeric code
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      
+      await setDoc(doc(db, "activation_codes", code), {
+        points: codePoints,
+        used: false,
+        createdAt: new Date(),
+        createdBy: user.email
+      });
+      
+      setGeneratedCode(code);
+    } catch (err: any) {
+      alert("فشل توليد الكود: " + err.message);
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
@@ -628,6 +657,44 @@ export default function AdminSection({
                 <p className="text-[10px] text-slate-500 leading-relaxed font-bold text-right pt-1">
                   💡 تدوير ذكي: عند حفظ الإعدادات، سيتم تطبيق نمط المفاتيح فورياً على خادم الطلاب واللوحة معاً لتخفيف ضغط الاستهلاك للـ API!
                 </p>
+              </div>
+            </div>
+
+            {/* Codes Generator Section */}
+            <div className="bg-[#0b0f19] p-5 rounded-3xl border border-slate-800 shadow-inner mt-4">
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-4 justify-end">
+                <h3 className="text-sm font-bold text-slate-200">أكواد تفعيل الرصيد (للمشتركين)</h3>
+                <Key className="w-5 h-5 text-amber-400" />
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col text-right gap-1">
+                  <label className="text-xs text-slate-400 font-bold">حدد عدد النقاط (الأسئلة) للكود:</label>
+                  <input
+                    type="number"
+                    value={codePoints}
+                    onChange={(e) => setCodePoints(Number(e.target.value))}
+                    className="bg-slate-900 border border-slate-700 text-white text-right rounded-xl px-3 py-2 text-sm focus:border-amber-500 outline-none w-full"
+                    dir="ltr"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleGenerateCode}
+                  disabled={isGeneratingCode}
+                  className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-all flex justify-center items-center gap-2 text-sm"
+                >
+                  {isGeneratingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  <span>توليد كود جديد</span>
+                </button>
+                
+                {generatedCode && (
+                  <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-xl p-4 text-center mt-2 space-y-2">
+                    <p className="text-xs text-emerald-400 font-bold">تم توليد الكود بنجاح. أرسله للمشترك:</p>
+                    <p className="text-lg font-mono font-black text-white tracking-widest select-all">{generatedCode}</p>
+                    <p className="text-[10px] text-slate-400">عدد النقاط: {codePoints}</p>
+                  </div>
+                )}
               </div>
             </div>
 

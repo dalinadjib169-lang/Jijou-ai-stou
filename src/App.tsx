@@ -1,12 +1,79 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon, Check } from "lucide-react";
+import { MessageSquare, LineChart, Shield, Download, Sparkles, Heart, Sun, Moon, Check, Key } from "lucide-react";
 import ChatSection from "./components/ChatSection";
 import MathFunctionSection from "./components/MathFunctionSection";
 import AdminSection from "./components/AdminSection";
 import DhikrTicker from "./components/DhikrTicker";
+import { db } from "./firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"chat" | "math" | "admin">("chat");
+
+  // Points and Questions Tracking
+  const [freeQuestionsUsed, setFreeQuestionsUsed] = useState<number>(() => {
+    return Number(localStorage.getItem("dali_freeQuestionsUsed")) || 0;
+  });
+  const [premiumPoints, setPremiumPoints] = useState<number>(() => {
+    return Number(localStorage.getItem("dali_premiumPoints")) || 0;
+  });
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [activationCode, setActivationCode] = useState("");
+  const [isActivating, setIsActivating] = useState(false);
+  const [activationError, setActivationError] = useState("");
+
+  const handleDeductPoint = (): boolean => {
+    if (premiumPoints > 0) {
+      const newPoints = premiumPoints - 1;
+      setPremiumPoints(newPoints);
+      localStorage.setItem("dali_premiumPoints", String(newPoints));
+      return true;
+    }
+    if (freeQuestionsUsed < 10) {
+      const newUsed = freeQuestionsUsed + 1;
+      setFreeQuestionsUsed(newUsed);
+      localStorage.setItem("dali_freeQuestionsUsed", String(newUsed));
+      return true;
+    }
+    // Out of points!
+    setShowPointsModal(true);
+    return false;
+  };
+
+  const handleActivateCode = async () => {
+    if (!activationCode.trim()) return;
+    setIsActivating(true);
+    setActivationError("");
+
+    try {
+      const codeDoc = doc(db, "activation_codes", activationCode.trim());
+      const docSnap = await getDoc(codeDoc);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.used) {
+          setActivationError("عذراً، هذا الكود تم استخدامه مسبقاً.");
+        } else {
+          // Valid code
+          const addedPoints = data.points || 50;
+          await updateDoc(codeDoc, { used: true, usedAt: new Date() });
+          const newPoints = premiumPoints + addedPoints;
+          setPremiumPoints(newPoints);
+          localStorage.setItem("dali_premiumPoints", String(newPoints));
+          setShowPointsModal(false);
+          setActivationCode("");
+          alert(`🎉 تم تفعيل الكود بنجاح! تمت إضافة ${addedPoints} نقطة لرصيدك.`);
+        }
+      } else {
+        setActivationError("الكود غير صحيح أو غير موجود.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setActivationError("حدث خطأ أثناء الاتصال بالخادم.");
+    } finally {
+      setIsActivating(false);
+    }
+  };
 
   // Global settings loaded live from Firestore settings/dali document with LocalStorage fallback
   const [welcomeMessage, setWelcomeMessage] = useState(() => {
@@ -325,6 +392,13 @@ export default function App() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-xs text-slate-350 font-semibold leading-none">شات تفاعلي ذكي 🇩🇿</span>
             </div>
+            
+            {/* Points Display */}
+            <div className="bg-[#1e293b] px-3 py-1.5 rounded-xl border border-emerald-500/30 flex items-center gap-2 cursor-pointer hover:bg-slate-800 transition" onClick={() => setShowPointsModal(true)}>
+              <span className="text-xs font-bold text-amber-400">
+                {premiumPoints > 0 ? `${premiumPoints} نقطة` : `${10 - freeQuestionsUsed} مجاني`}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -490,6 +564,7 @@ export default function App() {
                   apiKeys={apiKeys}
                   keyRotationMode={keyRotationMode}
                   selectedKeyIndex={selectedKeyIndex}
+                  onDeductPoint={handleDeductPoint}
                 />
               )}
 
@@ -498,6 +573,7 @@ export default function App() {
                   apiKeys={apiKeys}
                   keyRotationMode={keyRotationMode}
                   selectedKeyIndex={selectedKeyIndex}
+                  onDeductPoint={handleDeductPoint}
                 />
               )}
 
@@ -594,6 +670,48 @@ export default function App() {
               - لا تنسونا من صالح دعائكم -
             </p>
 
+          </div>
+        </div>
+      )}
+
+      {/* Points Modal */}
+      {showPointsModal && (
+        <div className="fixed inset-0 bg-[#020617]/85 backdrop-blur-md flex items-center justify-center p-4 z-50 text-right">
+          <div className="bg-[#131b2e] max-w-sm w-full rounded-2xl border border-emerald-500/35 p-5 sm:p-6 shadow-2xl relative space-y-4">
+            <button 
+              onClick={() => setShowPointsModal(false)}
+              className="absolute top-4 left-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all"
+            >
+              إغلاق ✕
+            </button>
+            <div className="flex items-center gap-2 justify-end pt-2">
+              <Key className="w-5 h-5 text-amber-400" />
+              <h3 className="text-lg font-black text-white">رصيد الأسئلة</h3>
+            </div>
+            
+            <p className="text-sm text-slate-300 font-semibold leading-relaxed">
+              لقد استنفدت رصيدك المجاني من الأسئلة أو ترغب في شحن رصيدك. أدخل كود التفعيل للحصول على المزيد من النقاط والمتابعة مع الأستاذ دالي.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <input 
+                type="text" 
+                placeholder="أدخل كود التفعيل هنا..." 
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-right text-sm outline-none focus:border-emerald-500 transition-colors"
+                dir="ltr"
+              />
+              {activationError && <p className="text-xs text-red-400 font-bold px-1">{activationError}</p>}
+              
+              <button 
+                onClick={handleActivateCode}
+                disabled={isActivating || !activationCode.trim()}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors flex justify-center items-center gap-2 text-sm"
+              >
+                {isActivating ? "جاري التحقق..." : "تفعيل الكود"}
+              </button>
+            </div>
           </div>
         </div>
       )}

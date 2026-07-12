@@ -8,6 +8,7 @@ interface ChatSectionProps {
   apiKeys?: string[];
   keyRotationMode?: "sequential" | "manual";
   selectedKeyIndex?: number;
+  onDeductPoint?: () => boolean;
 }
 
 export default function ChatSection({ 
@@ -15,7 +16,8 @@ export default function ChatSection({
   profileImageUrl, 
   apiKeys,
   keyRotationMode = "sequential",
-  selectedKeyIndex = -1
+  selectedKeyIndex = -1,
+  onDeductPoint
 }: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMsg, setInputMsg] = useState("");
@@ -341,6 +343,10 @@ export default function ChatSection({
   const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || inputMsg;
     if (!textToSend.trim() && !selectedImageBase64) return;
+
+    if (onDeductPoint && !onDeductPoint()) {
+      return; // Stop if out of points
+    }
 
     const userMsgId = Date.now().toString();
     const newUserMessage: Message = {
