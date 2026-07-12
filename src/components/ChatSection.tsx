@@ -555,7 +555,7 @@ export default function ChatSection({
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 max-w-4xl ${
+                className={`flex gap-3 w-full ${
                   msg.sender === "user" ? "justify-end" : "justify-start"
                 }`}
               >
@@ -565,7 +565,7 @@ export default function ChatSection({
                     referrerPolicy="no-referrer"
                     src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
                     alt="الأستاذ دالي" 
-                    className="w-9 h-9 rounded-full object-cover border border-emerald-500 shadow animate-fade-in"
+                    className="w-9 h-9 shrink-0 rounded-full object-cover border border-emerald-500 shadow animate-fade-in"
                     onError={(e) => {
                       e.currentTarget.src = "https://img.icons8.com/color/150/user-male-circle.png";
                     }}
@@ -573,7 +573,7 @@ export default function ChatSection({
                 )}
 
                  {/* Message Body bubble */}
-                 <div className={`flex flex-col max-w-[85%] ${
+                 <div className={`flex flex-col ${msg.sender === "user" ? "max-w-[85%]" : "w-full"} ${
                    msg.sender === "user" ? "items-end" : "items-start"
                  }`}>
                    <div
@@ -613,7 +613,7 @@ export default function ChatSection({
                        </div>
                      )}
 
-                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none ${isDarkMode ? 'text-white prose-invert prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800' : 'text-slate-800 prose-headings:text-emerald-700 prose-a:text-emerald-600 prose-strong:text-slate-900 prose-pre:bg-slate-100 prose-pre:border-slate-200'} prose-p:leading-relaxed markdown-body`}>
+                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none ${isDarkMode ? 'text-white prose-invert prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800' : 'text-slate-800 prose-headings:text-emerald-700 prose-a:text-emerald-600 prose-strong:text-slate-900 prose-pre:bg-slate-100 prose-pre:border-slate-200'} prose-p:leading-relaxed markdown-body text-right`} style={{ direction: "rtl" }}>
                        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                          {msg.text}
                        </Markdown>
@@ -642,7 +642,7 @@ export default function ChatSection({
                   referrerPolicy="no-referrer"
                   src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
                   alt="الأستاذ دالي" 
-                  className="w-9 h-9 rounded-full object-cover border border-emerald-500"
+                  className="w-9 h-9 shrink-0 rounded-full object-cover border border-emerald-500"
                 />
                 <div className="bg-slate-800 text-slate-200 p-4 rounded-2xl rounded-tl-none border border-slate-700/60 inline-flex items-center gap-2.5 text-sm/relaxed">
                   <div className="flex gap-1">

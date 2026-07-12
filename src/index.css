@@ -212,3 +212,24 @@
   background-color: rgba(5, 150, 105, 0.05) !important; 
   color: #0f172a !important;
 }
+
+/* Fix Bidi Math Rendering */
+.markdown-body code {
+  direction: ltr !important;
+  unicode-bidi: embed;
+  display: inline-block;
+  text-align: left;
+}
+
+/* Fix RTL List and Block direction */
+.markdown-body {
+  direction: rtl;
+  text-align: right;
+}
+.markdown-body ul, .markdown-body ol {
+  padding-right: 1.5rem;
+  padding-left: 0;
+}
+.markdown-body li {
+  direction: rtl;
+}
