@@ -573,9 +573,7 @@ export default function ChatSection({
                 )}
 
                  {/* Message Body bubble */}
-                 <div className={`flex flex-col ${msg.sender === "user" ? "max-w-[85%]" : "w-full"} ${
-                   msg.sender === "user" ? "items-end" : "items-start"
-                 }`}>
+                 <div className={`flex flex-col ${msg.sender === "user" ? "user-bubble items-end" : "ai-bubble items-start"}`}>
                    <div
                      className={`p-4 rounded-2xl shadow-lg text-sm md:text-base leading-relaxed border relative group transition-all duration-300 ${
                        msg.sender === "user"

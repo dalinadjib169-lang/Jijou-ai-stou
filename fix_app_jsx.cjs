@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+const fs = require('fs');
+
+const content = `import React, { useState, useEffect } from "react";
 import { MessageSquare, LineChart, Shield, Sparkles, Heart, Sun, Moon, Check, Key } from "lucide-react";
 import ChatSection from "./components/ChatSection";
 import MathFunctionSection from "./components/MathFunctionSection";
@@ -58,7 +60,7 @@ export default function App() {
           localStorage.setItem("dali_premiumPoints", String(newPoints));
           setShowPointsModal(false);
           setActivationCode("");
-          alert(`🎉 تم تفعيل الكود بنجاح! تمت إضافة ${addedPoints} نقطة لرصيدك.`);
+          alert(\`🎉 تم تفعيل الكود بنجاح! تمت إضافة \${addedPoints} نقطة لرصيدك.\`);
         }
       } else {
         setActivationError("الكود غير صحيح أو غير موجود.");
@@ -147,7 +149,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className={`min-h-screen text-slate-100 font-sans relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-[#0b0f19]' : 'bg-slate-50'}`} dir="rtl">
+    <div className={\`min-h-screen text-slate-100 font-sans relative overflow-hidden transition-colors duration-300 \${isDarkMode ? 'bg-[#0b0f19]' : 'bg-slate-50'}\`} dir="rtl">
       {/* Background Decorative Gradients */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-600/5 rounded-full blur-[150px] -z-10 pointer-events-none"></div>
@@ -171,11 +173,11 @@ export default function App() {
             </div>
             
             <div className="text-right">
-              <h1 className={`text-2xl font-black tracking-tight flex items-center gap-2 ${isDarkMode ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200' : 'text-emerald-700'}`}>
+              <h1 className={\`text-2xl font-black tracking-tight flex items-center gap-2 \${isDarkMode ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200' : 'text-emerald-700'}\`}>
                 الأستاذ دالي
                 <Sparkles className="w-5 h-5 text-amber-400" />
               </h1>
-              <p className={`text-sm font-medium mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              <p className={\`text-sm font-medium mt-1 \${isDarkMode ? 'text-slate-400' : 'text-slate-600'}\`}>
                 مساعدك الذكي في الرياضيات والمنهاج 🇩🇿
               </p>
             </div>
@@ -185,16 +187,16 @@ export default function App() {
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleTheme}
-                className={`p-2.5 rounded-full transition-all ${isDarkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-white text-slate-700 shadow-md border border-slate-200 hover:bg-slate-50'}`}
+                className={\`p-2.5 rounded-full transition-all \${isDarkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-white text-slate-700 shadow-md border border-slate-200 hover:bg-slate-50'}\`}
                 title={isDarkMode ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}
               >
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm ${isDarkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <Heart className={`w-4 h-4 ${premiumPoints > 0 ? 'text-rose-500 fill-rose-500/20' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
-                <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                  {premiumPoints > 0 ? `${premiumPoints} نقطة مميزة` : `${10 - freeQuestionsUsed} مجاني`}
+              <div className={\`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm \${isDarkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-white border-slate-200'}\`}>
+                <Heart className={\`w-4 h-4 \${premiumPoints > 0 ? 'text-rose-500 fill-rose-500/20' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}\`} />
+                <span className={\`text-sm font-bold \${isDarkMode ? 'text-slate-200' : 'text-slate-700'}\`}>
+                  {premiumPoints > 0 ? \`\${premiumPoints} نقطة مميزة\` : \`\${10 - freeQuestionsUsed} مجاني\`}
                 </span>
                 {premiumPoints === 0 && freeQuestionsUsed >= 10 && (
                   <span className="text-xs text-rose-500 font-bold ml-2">انتهى الرصيد</span>
@@ -211,14 +213,14 @@ export default function App() {
         </header>
 
         {/* Main Navigation */}
-        <nav className={`flex p-1.5 mb-6 rounded-xl border shadow-lg ${isDarkMode ? 'bg-[#131b2e] border-slate-800/50' : 'bg-white border-slate-200'}`}>
+        <nav className={\`flex p-1.5 mb-6 rounded-xl border shadow-lg \${isDarkMode ? 'bg-[#131b2e] border-slate-800/50' : 'bg-white border-slate-200'}\`}>
           <button
             onClick={() => setActiveTab("chat")}
-            className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer ${
+            className={\`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer \${
               activeTab === "chat"
                 ? (isDarkMode ? "bg-slate-800 text-emerald-400 border border-slate-700/50 shadow" : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm")
                 : (isDarkMode ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100")
-            }`}
+            }\`}
           >
             <MessageSquare className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">دردشة الأستاذ</span>
@@ -227,11 +229,11 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab("math")}
-            className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer ${
+            className={\`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer \${
               activeTab === "math"
                 ? (isDarkMode ? "bg-slate-800 text-emerald-400 border border-slate-700/50 shadow" : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm")
                 : (isDarkMode ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100")
-            }`}
+            }\`}
           >
             <LineChart className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">الدراسة الذكية</span>
@@ -240,11 +242,11 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab("admin")}
-            className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer ${
+            className={\`flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer \${
               activeTab === "admin"
                 ? (isDarkMode ? "bg-slate-800 text-emerald-400 border border-slate-700/50 shadow" : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm")
                 : (isDarkMode ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100")
-            }`}
+            }\`}
           >
             <Shield className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">لوحة التحكم</span>
@@ -296,21 +298,21 @@ export default function App() {
       {/* Premium Points / Activation Modal */}
       {showPointsModal && (
         <div className="fixed inset-0 bg-[#0b0f19]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${isDarkMode ? 'bg-[#131b2e] border-slate-700' : 'bg-white border-slate-200'} border p-6 rounded-2xl max-w-sm w-full shadow-2xl relative overflow-hidden`}>
+          <div className={\`\${isDarkMode ? 'bg-[#131b2e] border-slate-700' : 'bg-white border-slate-200'} border p-6 rounded-2xl max-w-sm w-full shadow-2xl relative overflow-hidden\`}>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
             
-            <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+            <h3 className={\`text-xl font-bold mb-2 flex items-center gap-2 \${isDarkMode ? 'text-white' : 'text-slate-800'}\`}>
               <Key className="w-5 h-5 text-emerald-500" />
               شحن الرصيد المميز
             </h3>
             
-            <p className={`text-sm mb-6 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+            <p className={\`text-sm mb-6 leading-relaxed \${isDarkMode ? 'text-slate-300' : 'text-slate-600'}\`}>
               لقد استهلكت جميع أسئلتك المجانية. لتتمكن من مواصلة استخدام الأستاذ دالي، يرجى إدخال كود التفعيل الخاص بك.
             </p>
             
             <div className="space-y-4">
               <div>
-                <label className={`block text-xs font-bold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                <label className={\`block text-xs font-bold mb-2 \${isDarkMode ? 'text-slate-400' : 'text-slate-600'}\`}>
                   كود التفعيل (Activation Code)
                 </label>
                 <input 
@@ -318,7 +320,7 @@ export default function App() {
                   value={activationCode}
                   onChange={(e) => setActivationCode(e.target.value)}
                   placeholder="أدخل كود التفعيل هنا..."
-                  className={`w-full p-3 rounded-xl border text-sm font-mono text-center tracking-widest outline-none transition-all ${isDarkMode ? 'bg-slate-900/50 border-slate-700 focus:border-emerald-500 text-white' : 'bg-slate-50 border-slate-300 focus:border-emerald-500 text-slate-800'}`}
+                  className={\`w-full p-3 rounded-xl border text-sm font-mono text-center tracking-widest outline-none transition-all \${isDarkMode ? 'bg-slate-900/50 border-slate-700 focus:border-emerald-500 text-white' : 'bg-slate-50 border-slate-300 focus:border-emerald-500 text-slate-800'}\`}
                   dir="ltr"
                 />
               </div>
@@ -332,7 +334,7 @@ export default function App() {
               <div className="flex gap-3 mt-6">
                 <button 
                   onClick={() => setShowPointsModal(false)}
-                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  className={\`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all \${isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}\`}
                 >
                   إلغاء
                 </button>
@@ -351,3 +353,7 @@ export default function App() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/App.tsx', content, 'utf-8');
+console.log("App.tsx fixed");

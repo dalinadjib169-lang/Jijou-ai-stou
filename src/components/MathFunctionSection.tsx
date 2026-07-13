@@ -1407,7 +1407,7 @@ f(x) = ${expression}
                               <span className="text-[10px] text-slate-400 font-bold px-1">
                                 {msg.role === "student" ? "أنت (التلميذ) 👤" : "الأستاذ دالي 🎓"}
                               </span>
-                              <div className={`p-2.5 rounded-xl text-xs leading-relaxed prose prose-sm max-w-none markdown-body text-right ${msg.role === "student" ? "max-w-[85%]" : "w-full"} ${
+                              <div className={`p-2.5 rounded-xl text-xs leading-relaxed prose prose-sm max-w-none markdown-body text-right ${msg.role === "student" ? "user-bubble" : "ai-bubble"} ${
                                 msg.role === "student" 
                                   ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
                                   : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
@@ -2167,7 +2167,7 @@ f(x) = ${expression}
                               <span className="text-[10px] text-slate-400 font-bold px-1 font-sans">
                                 {msg.role === "student" ? "أنت (التلميذ) 👤" : "الأستاذ دالي 🎓"}
                               </span>
-                              <div className={`p-2.5 rounded-xl text-xs leading-relaxed prose prose-sm max-w-none markdown-body text-right ${msg.role === "student" ? "max-w-[85%]" : "w-full"} ${
+                              <div className={`p-2.5 rounded-xl text-xs leading-relaxed prose prose-sm max-w-none markdown-body text-right ${msg.role === "student" ? "user-bubble" : "ai-bubble"} ${
                                 msg.role === "student" 
                                   ? "bg-slate-800 text-slate-100 rounded-tl-none text-left" 
                                   : "bg-emerald-950/40 border border-emerald-900/40 text-slate-100 rounded-tr-none text-right whitespace-pre-line"
@@ -2392,7 +2392,7 @@ f(x) = ${expression}
                     <span className={`text-[9px] font-bold ${turn.role === "student" ? "text-emerald-400" : "text-amber-400"} mb-0.5`}>
                       {turn.role === "student" ? "التلميذ 🙋‍♂️" : "الأستاذ دالي نجيب 🎓"}
                     </span>
-                    <div className={`p-2.5 rounded-xl text-xs leading-relaxed font-medium prose prose-sm max-w-none markdown-body text-right ${turn.role === "student" ? "max-w-[85%]" : "w-full"} ${
+                    <div className={`p-2.5 rounded-xl text-xs leading-relaxed font-medium prose prose-sm max-w-none markdown-body text-right ${turn.role === "student" ? "user-bubble" : "ai-bubble"} ${
                       turn.role === "student" 
                         ? "bg-emerald-950/40 text-slate-100 rounded-tl-none border border-emerald-900/40" 
                         : "bg-[#111827] text-slate-200 rounded-tr-none border border-slate-800"
