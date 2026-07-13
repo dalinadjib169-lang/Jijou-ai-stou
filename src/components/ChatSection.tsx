@@ -459,7 +459,7 @@ export default function ChatSection({
   };
 
   return (
-    <div className="flex flex-col h-[650px] bg-[#131b2e] rounded-1-none rounded-2xl border border-slate-800 shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[650px] bg-[#131b2e] md:rounded-2xl md:border md:border-slate-800 md:shadow-lg overflow-hidden">
       {/* Top Profile Header */}
       <div className="bg-slate-900/60 px-4 md:px-5 py-3.5 flex flex-col xs:flex-row items-center justify-between border-b border-slate-800 gap-3">
         <div className="flex items-center gap-3.5 text-right w-full xs:w-auto">
@@ -554,14 +554,12 @@ export default function ChatSection({
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex w-full ${
-                  msg.sender === "user" ? "justify-end gap-3" : "justify-center"
-                }`}
+                className="flex w-full"
               >
                 {/* Assistant avatar moved inside the bubble */}
 
                  {/* Message Body bubble */}
-                 <div className={`flex flex-col ${msg.sender === "user" ? "user-bubble items-end" : "w-full items-start"}`}>
+                 <div className="flex flex-col w-full items-start">
                    <div
                      className={`relative group transition-all duration-300 w-full ${
                        msg.sender === "user"
@@ -581,6 +579,14 @@ export default function ChatSection({
                            }}
                          />
                          <span className="font-bold text-emerald-400 text-sm md:text-base">الأستاذ دالي</span>
+                       </div>
+                     )}
+                     {msg.sender === "user" && (
+                       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/80">
+                         <div className="w-8 h-8 rounded-full bg-slate-850 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-[10px] shrink-0 select-none">
+                           طالب
+                         </div>
+                         <span className="font-bold text-teal-400 text-sm md:text-base">أنت (طالب)</span>
                        </div>
                      )}
                      {/* Embedded image message if present */}
@@ -626,12 +632,7 @@ export default function ChatSection({
                    </span>
                  </div>
 
-                {/* User Avatar */}
-                {msg.sender === "user" && (
-                  <div className="w-9 h-9 rounded-full bg-slate-850 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs shrink-0 select-none">
-                    طالب
-                  </div>
-                )}
+                
               </div>
             ))}
 
