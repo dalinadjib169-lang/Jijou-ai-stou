@@ -88,12 +88,8 @@ app.use((req, res, next) => {
   next();
 });
 
-import fs from "fs";
-
 // Load Firebase configuration
-const firebaseConfig = JSON.parse(
-  fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")
-);
+import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
 
 const fbApp = initializeApp(firebaseConfig);
 const firestoreDb = firebaseConfig.firestoreDatabaseId
@@ -313,7 +309,7 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     const allKeys = await getRotatedApiKeys();
     if (allKeys.length === 0) {
       return res.status(500).json({ 
-        error: "مفاتيح API الخاصة بـ Gemini غير متوفرة. يرجى إضافتها من لوحة التحكم للأستاذ." 
+        error: "مفاتيح API الخاصة بـ Gemini غير متوفرة. يرجى إضافتها في إعدادات Vercel كمتغيرات بيئة." 
       });
     }
 
