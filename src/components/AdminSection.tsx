@@ -29,9 +29,7 @@ export default function AdminSection({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [keyStats, setKeyStats] = useState<{keyId: string, requests: number, errors: number, lastUsed: string | null}[]>([]);
 
-  const [codePoints, setCodePoints] = useState(50);
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -87,29 +85,7 @@ export default function AdminSection({
     }
   };
 
-  const handleGenerateCode = async () => {
-    if (!user) return;
-    setIsGeneratingCode(true);
-    try {
-      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const newCode = `DALI-${randomPart}-${codePoints}`;
-      
-      await setDoc(doc(db, "activation_codes", newCode), {
-        points: codePoints,
-        used: false,
-        createdAt: new Date(),
-        createdBy: user.uid
-      });
-      
-      setGeneratedCode(newCode);
-    } catch (err) {
-      console.error(err);
-      alert("حدث خطأ أثناء إنشاء الكود.");
-    } finally {
-      setIsGeneratingCode(false);
-    }
-  };
-
+  
   if (isLoadingAuth) {
     return (
       <div className="flex justify-center items-center p-12">
@@ -222,45 +198,6 @@ export default function AdminSection({
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Codes Generator Section */}
-        <div className="bg-[#0b0f19] p-5 rounded-3xl border border-slate-800 shadow-inner mt-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-            <h3 className="text-sm font-bold text-slate-200">أكواد تفعيل الرصيد</h3>
-            <Key className="w-5 h-5 text-amber-400" />
-          </div>
-          
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-400 font-bold text-right">حدد عدد النقاط للكود:</label>
-              <input
-                type="number"
-                value={codePoints}
-                onChange={(e) => setCodePoints(Number(e.target.value))}
-                className="bg-slate-900 border border-slate-700 text-white text-right rounded-xl px-3 py-2 text-sm focus:border-amber-500 outline-none w-full"
-                min={1}
-                max={5000}
-              />
-            </div>
-            
-            <button
-              onClick={handleGenerateCode}
-              disabled={isGeneratingCode}
-              className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-[#0f172a] font-black rounded-xl py-2.5 text-sm transition-colors mt-1 w-full"
-            >
-              {isGeneratingCode ? 'جاري الإنشاء...' : 'إنشاء كود جديد'}
-            </button>
-            
-            {generatedCode && (
-              <div className="mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-                <p className="text-[10px] text-amber-400 font-bold mb-1">تم إنشاء الكود بنجاح (انسخه الآن):</p>
-                <div className="font-mono text-lg text-white font-black select-all tracking-widest bg-black/40 py-1.5 rounded-lg border border-slate-700" dir="ltr">
-                  {generatedCode}
-                </div>
               </div>
             )}
           </div>

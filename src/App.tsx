@@ -18,9 +18,7 @@ export default function App() {
   });
   
   const [showPointsModal, setShowPointsModal] = useState(false);
-  const [activationCode, setActivationCode] = useState("");
-  const [isActivating, setIsActivating] = useState(false);
-  const [activationError, setActivationError] = useState("");
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
 
   const handleDeductPoint = (): boolean => {
     if (premiumPoints > 0) {
@@ -39,36 +37,18 @@ export default function App() {
     return false;
   };
 
-  const handleActivateCode = async () => {
-    if (!activationCode.trim()) return;
-    setIsActivating(true);
-    setActivationError("");
-    try {
-      const codeDoc = doc(db, "activation_codes", activationCode.trim());
-      const docSnap = await getDoc(codeDoc);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.used) {
-          setActivationError("عذراً، هذا الكود تم استخدامه مسبقاً.");
-        } else {
-          const addedPoints = data.points || 50;
-          await updateDoc(codeDoc, { used: true, usedAt: new Date() });
-          const newPoints = premiumPoints + addedPoints;
-          setPremiumPoints(newPoints);
-          localStorage.setItem("dali_premiumPoints", String(newPoints));
-          setShowPointsModal(false);
-          setActivationCode("");
-          alert(`🎉 تم تفعيل الكود بنجاح! تمت إضافة ${addedPoints} نقطة لرصيدك.`);
-        }
-      } else {
-        setActivationError("الكود غير صحيح أو غير موجود.");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setActivationError("حدث خطأ أثناء الاتصال بالخادم.");
-    } finally {
-      setIsActivating(false);
-    }
+  const handleWatchAd = () => {
+    setIsWatchingAd(true);
+    // Mock AdMob integration
+    setTimeout(() => {
+      const addedPoints = 5;
+      const newPoints = premiumPoints + addedPoints;
+      setPremiumPoints(newPoints);
+      localStorage.setItem("dali_premiumPoints", String(newPoints));
+      setShowPointsModal(false);
+      setIsWatchingAd(false);
+      alert("تمت إضافة 5 أسئلة بنجاح!");
+    }, 2000);
   };
 
   const [welcomeMessage, setWelcomeMessage] = useState(() => {
@@ -282,34 +262,14 @@ export default function App() {
             
             <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
               <Key className="w-5 h-5 text-emerald-500" />
-              شحن الرصيد المميز
+              الأسئلة المجانية انتهت
             </h3>
             
             <p className={`text-sm mb-6 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              لقد استهلكت جميع أسئلتك المجانية. لتتمكن من مواصلة استخدام الأستاذ دالي، يرجى إدخال كود التفعيل الخاص بك.
+              لقد استهلكت جميع أسئلتك المجانية الـ 10. لتتمكن من مواصلة استخدام الأستاذ دالي والحصول على 5 أسئلة إضافية، يرجى مشاهدة إعلان قصير.
             </p>
             
             <div className="space-y-4">
-              <div>
-                <label className={`block text-xs font-bold mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  كود التفعيل (Activation Code)
-                </label>
-                <input 
-                  type="text" 
-                  value={activationCode}
-                  onChange={(e) => setActivationCode(e.target.value)}
-                  placeholder="أدخل كود التفعيل هنا..."
-                  className={`w-full p-3 rounded-xl border text-sm font-mono text-center tracking-widest outline-none transition-all ${isDarkMode ? 'bg-slate-900/50 border-slate-700 focus:border-emerald-500 text-white' : 'bg-slate-50 border-slate-300 focus:border-emerald-500 text-slate-800'}`}
-                  dir="ltr"
-                />
-              </div>
-              
-              {activationError && (
-                <div className="text-xs text-rose-500 font-bold bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
-                  {activationError}
-                </div>
-              )}
-              
               <div className="flex gap-3 mt-6">
                 <button 
                   onClick={() => setShowPointsModal(false)}
@@ -318,11 +278,11 @@ export default function App() {
                   إلغاء
                 </button>
                 <button 
-                  onClick={handleActivateCode}
-                  disabled={isActivating || !activationCode.trim()}
+                  onClick={handleWatchAd}
+                  disabled={isWatchingAd}
                   className="flex-1 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
                 >
-                  {isActivating ? 'جاري التحقق...' : 'تفعيل الكود'}
+                  {isWatchingAd ? 'جاري التحميل...' : 'شاهد إعلان للحصول على أسئلة'}
                 </button>
               </div>
             </div>

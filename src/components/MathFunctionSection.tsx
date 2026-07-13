@@ -710,7 +710,7 @@ export default function MathFunctionSection({
     history: {role: string; text: string}[] = []
   ): Promise<string> => {
     if (onDeductPoint && !onDeductPoint()) {
-      throw new Error("عذراً، لقد استنفدت رصيدك من الأسئلة. يرجى إدخال كود تفعيل للمتابعة.");
+      throw new Error("عذراً، لقد استنفدت رصيدك من الأسئلة. يرجى مشاهدة إعلان للمتابعة.");
     }
 
     let backendSuccess = false;
