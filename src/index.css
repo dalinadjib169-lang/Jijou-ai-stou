@@ -347,3 +347,12 @@
 .user-bubble {
   max-width: 90% !important;
 }
+
+/* Fix horizontal overflow in markdown */
+.markdown-body {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow-x: hidden;
+}

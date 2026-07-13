@@ -79,24 +79,9 @@ export default function App() {
     return localStorage.getItem("dali_profileImageUrl") || "https://img.icons8.com/color/150/user-male-circle.png";
   });
   
-  const [apiKeys, setApiKeys] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem("dali_apiKeys");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [keyRotationMode, setKeyRotationMode] = useState<"sequential" | "manual">(() => {
-    return (localStorage.getItem("dali_keyRotationMode") as "sequential" | "manual") || "sequential";
-  });
-
-  const [selectedKeyIndex, setSelectedKeyIndex] = useState<number>(() => {
-    const val = localStorage.getItem("dali_selectedKeyIndex");
-    return val ? Number(val) : -1;
-  });
-
+  
+  
+  
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("dali_theme");
     return saved !== "light";
@@ -259,19 +244,15 @@ export default function App() {
               isDarkMode={isDarkMode} 
               welcomeMessage={welcomeMessage} 
               profileImageUrl={profileImageUrl} 
-              apiKeys={apiKeys}
-              keyRotationMode={keyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
+              
+              
+              
               onDeductPoint={handleDeductPoint}
             />
           )}
           {activeTab === "math" && (
             <MathFunctionSection 
               isDarkMode={isDarkMode} 
-              profileImageUrl={profileImageUrl}
-              apiKeys={apiKeys}
-              keyRotationMode={keyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
               onDeductPoint={handleDeductPoint}
             />
           )}
@@ -282,12 +263,12 @@ export default function App() {
               setWelcomeMessage={setWelcomeMessage}
               profileImageUrl={profileImageUrl}
               setProfileImageUrl={setProfileImageUrl}
-              apiKeys={apiKeys}
-              setApiKeys={setApiKeys}
-              keyRotationMode={keyRotationMode}
-              setKeyRotationMode={setKeyRotationMode}
-              selectedKeyIndex={selectedKeyIndex}
-              setSelectedKeyIndex={setSelectedKeyIndex}
+              
+              
+              
+              
+              
+              
             />
           )}
         </main>

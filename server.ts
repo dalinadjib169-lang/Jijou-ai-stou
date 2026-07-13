@@ -143,6 +143,8 @@ async function checkFirestoreStatus() {
 checkFirestoreStatus();
 
 // Unified secure settings read function
+
+let keyUsageStats: Record<string, { requests: number; errors: number; lastUsed: Date | null }> = {};
 async function getSettingsData(): Promise<any> {
   const fallbackDefaults = {
     welcomeMessage: "مرحبا بيك خويا اختي انا الاستاذ دالي استاذ مادة رياضيات و مبرمج بذكاء اصطناعي كيفاش نقدر نساعدك؟",
@@ -305,7 +307,7 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     }
 
     // Prioritize request body parameters passed in real-time from client state
-    const mode = keyRotationMode !== undefined ? keyRotationMode : docMode;
+    const mode = "sequential";
     const selectedIdx = selectedKeyIndex !== undefined ? Number(selectedKeyIndex) : docIndex;
 
     const allKeys = await getRotatedApiKeys();
@@ -316,14 +318,9 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
     }
 
     let keysToTry: string[] = [];
-    if (mode === "manual" && selectedIdx >= 0 && selectedIdx < allKeys.length) {
-      keysToTry = [allKeys[selectedIdx]];
-      console.log(`[Server Key Active Select] Manual index active. Using key ${selectedIdx + 1} exclusively: ${keysToTry[0].substring(0, 10)}...`);
-    } else {
-      // Sequential Ordered Automatic Rotation: try keys in exact sequence list order
-      keysToTry = [...allKeys];
-      console.log(`[Server Key Active Select] Sequential Auto Active. Trying ${keysToTry.length} keys in list order.`);
-    }
+    // Sequential Ordered Automatic Rotation: try keys in exact sequence list order
+    keysToTry = [...allKeys];
+    console.log(`[Server Key Active Select] Sequential Auto Active. Trying ${keysToTry.length} keys in list order.`);
 
     let lastError: any = null;
     let replyText = "";
@@ -340,6 +337,10 @@ app.post("/api/gemini/chat", async (req: any, res: any) => {
       console.log(`[Server Key Rotation] Attempting key ${i + 1}/${keysToTry.length}: ${keyDisplay}...`);
 
       try {
+        if (keyUsageStats[activeKey]) {
+          keyUsageStats[activeKey].requests++;
+          keyUsageStats[activeKey].lastUsed = new Date();
+        }
         const ai = new GoogleGenAI({
           apiKey: activeKey,
           httpOptions: {
@@ -525,6 +526,25 @@ app.get("/api/public/config", async (req: any, res: any) => {
 });
 
 // Secure endpoint for the authenticated Admin to get settings with MASKED keys
+
+app.get("/api/admin/keys-status", async (req: any, res: any) => {
+  try {
+    const keys = await getRotatedApiKeys();
+    const stats = keys.map(k => {
+      const s = keyUsageStats[k] || { requests: 0, errors: 0, lastUsed: null };
+      return {
+        keyId: k.substring(0, 8) + "..." + k.substring(k.length - 4),
+        requests: s.requests,
+        errors: s.errors,
+        lastUsed: s.lastUsed
+      };
+    });
+    res.json({ keys: stats });
+  } catch (e) {
+    res.status(500).json({ error: "فشل استرجاع حالة المفاتيح" });
+  }
+});
+
 app.get("/api/admin/get-settings", async (req: any, res: any) => {
   try {
     const idToken = req.query.idToken || "";

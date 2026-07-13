@@ -389,8 +389,7 @@ export default function ChatSection({
           })),
           base64Image: currentBase64,
           mimeType: currentMime,
-          keyRotationMode,
-          selectedKeyIndex
+          
         })
       });
 
@@ -611,7 +610,7 @@ export default function ChatSection({
                        </div>
                      )}
 
-                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-none ${isDarkMode ? 'text-white prose-invert prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800' : 'text-slate-800 prose-headings:text-emerald-700 prose-a:text-emerald-600 prose-strong:text-slate-900 prose-pre:bg-slate-100 prose-pre:border-slate-200'} prose-p:leading-relaxed markdown-body text-right`} style={{ direction: "rtl" }}>
+                     <div className={`${msg.sender === "assistant" ? "pl-7" : ""} prose prose-sm max-w-full overflow-hidden break-words ${isDarkMode ? 'text-white prose-invert prose-headings:text-emerald-400 prose-a:text-amber-400 prose-strong:text-white prose-pre:bg-slate-900 prose-pre:border-slate-800' : 'text-slate-800 prose-headings:text-emerald-700 prose-a:text-emerald-600 prose-strong:text-slate-900 prose-pre:bg-slate-100 prose-pre:border-slate-200'} prose-p:leading-relaxed markdown-body text-right`} style={{ direction: "rtl" }}>
                        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                          {msg.text}
                        </Markdown>
@@ -662,7 +661,7 @@ export default function ChatSection({
         {/* Attachment Image Preview bar */}
         {imagePreviewUrl && (
           <div className="flex items-center justify-between bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 animate-fade-in animate-pulse">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               <div className="w-10 h-10 rounded overflow-hidden border border-slate-800 bg-black">
                 <img referrerPolicy="no-referrer" src={imagePreviewUrl} alt="صورة التمرين" className="object-cover w-full h-full" />
               </div>
@@ -689,7 +688,7 @@ export default function ChatSection({
             e.preventDefault();
             handleSendMessage();
           }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full"
         >
           {/* File Input */}
           <input 
@@ -711,12 +710,17 @@ export default function ChatSection({
           </button>
 
           {/* Text input */}
-          <input
-            type="text"
+          <textarea
             value={inputMsg}
             onChange={(e) => setInputMsg(e.target.value)}
-            placeholder="اسأل الأستاذ دالي عن أي دالة، مبرهنة، أو تمرين..."
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-200 text-right pr-4"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder="اسأل الأستاذ دالي هنا..."
+            className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm md:text-base text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-200 text-right pr-4 resize-none h-12 md:h-14"
             disabled={isSending}
           />
 
