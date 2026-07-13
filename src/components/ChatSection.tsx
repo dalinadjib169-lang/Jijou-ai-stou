@@ -554,32 +554,35 @@ export default function ChatSection({
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 w-full ${
-                  msg.sender === "user" ? "justify-end" : "justify-start"
+                className={`flex w-full ${
+                  msg.sender === "user" ? "justify-end gap-3" : "justify-center"
                 }`}
               >
-                {/* Assistant Avatar */}
-                {msg.sender === "assistant" && (
-                  <img 
-                    referrerPolicy="no-referrer"
-                    src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
-                    alt="الأستاذ دالي" 
-                    className="w-9 h-9 shrink-0 rounded-full object-cover border border-emerald-500 shadow animate-fade-in"
-                    onError={(e) => {
-                      e.currentTarget.src = "https://img.icons8.com/color/150/user-male-circle.png";
-                    }}
-                  />
-                )}
+                {/* Assistant avatar moved inside the bubble */}
 
                  {/* Message Body bubble */}
-                 <div className={`flex flex-col ${msg.sender === "user" ? "user-bubble items-end" : "ai-bubble items-start"}`}>
+                 <div className={`flex flex-col ${msg.sender === "user" ? "user-bubble items-end" : "w-full items-start"}`}>
                    <div
-                     className={`p-4 rounded-2xl shadow-lg text-sm md:text-base leading-relaxed border relative group transition-all duration-300 ${
+                     className={`relative group transition-all duration-300 w-full ${
                        msg.sender === "user"
-                         ? "bg-[#111827] text-slate-100 border-slate-800 rounded-tr-none text-right"
-                         : "bg-[#1a2436] text-slate-100 border-slate-750 rounded-tl-none text-right whitespace-pre-line shadow-emerald-500/5 hover:border-emerald-400/25"
+                         ? "p-4 rounded-2xl shadow-lg text-sm md:text-base leading-relaxed border bg-[#111827] text-slate-100 border-slate-800 rounded-tr-none text-right"
+                         : "p-4 md:p-5 rounded-2xl text-sm md:text-base leading-relaxed border bg-[#1a2436] text-slate-100 border-slate-750 text-right whitespace-pre-line shadow-emerald-500/5 hover:border-emerald-400/25"
                      }`}
                    >
+                     {msg.sender === "assistant" && (
+                       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-700/50">
+                         <img 
+                           referrerPolicy="no-referrer"
+                           src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
+                           alt="الأستاذ دالي" 
+                           className="w-8 h-8 shrink-0 rounded-full object-cover border border-emerald-500 shadow animate-fade-in"
+                           onError={(e) => {
+                             e.currentTarget.src = "https://img.icons8.com/color/150/user-male-circle.png";
+                           }}
+                         />
+                         <span className="font-bold text-emerald-400 text-sm md:text-base">الأستاذ دالي</span>
+                       </div>
+                     )}
                      {/* Embedded image message if present */}
                      {msg.imageUrl && (
                        <div className="mb-3 rounded-lg overflow-hidden border border-slate-800 max-h-48">
@@ -634,20 +637,27 @@ export default function ChatSection({
 
             {/* Assistant typing loader simulation */}
             {isSending && (
-              <div className="flex gap-3 justify-start animate-pulse">
-                <img 
-                  referrerPolicy="no-referrer"
-                  src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
-                  alt="الأستاذ دالي" 
-                  className="w-9 h-9 shrink-0 rounded-full object-cover border border-emerald-500"
-                />
-                <div className="bg-slate-800 text-slate-200 p-4 rounded-2xl rounded-tl-none border border-slate-700/60 inline-flex items-center gap-2.5 text-sm/relaxed">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-300"></span>
-                  </div>
-                  <span>الأستاذ دالي يكتب ويفصل لك الحل، صلي على محمد...</span>
+              <div className="flex justify-center w-full animate-fade-in mt-4">
+                <div className="w-full flex flex-col items-start">
+                   <div className="p-4 md:p-5 rounded-2xl text-sm md:text-base leading-relaxed border bg-[#1a2436] text-slate-100 border-slate-750 text-right shadow-emerald-500/5 w-full">
+                     <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-700/50">
+                       <img 
+                         referrerPolicy="no-referrer"
+                         src={profileImageUrl || "https://img.icons8.com/color/150/user-male-circle.png"} 
+                         alt="الأستاذ دالي" 
+                         className="w-8 h-8 shrink-0 rounded-full object-cover border border-emerald-500 shadow animate-fade-in"
+                       />
+                       <span className="font-bold text-emerald-400 text-sm md:text-base">الأستاذ دالي</span>
+                     </div>
+                     <div className="inline-flex items-center gap-2.5">
+                       <div className="flex gap-1">
+                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
+                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
+                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-300"></span>
+                       </div>
+                       <span>الأستاذ دالي يكتب ويفصل لك الحل، صلي على محمد...</span>
+                     </div>
+                   </div>
                 </div>
               </div>
             )}
