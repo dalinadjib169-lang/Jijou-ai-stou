@@ -160,10 +160,10 @@ export default function ChatSection({
   };
 
   // Handle Send Message
-  const handleSend = async () => {
-    if ((!inputValue.trim() && !selectedImageBase64) || isSending) return;
+  const handleSendMessage = async () => {
+    if ((!inputMsg.trim() && !selectedImageBase64) || isSending) return;
 
-    const textToSend = inputValue;
+    const textToSend = inputMsg;
     const currentBase64 = selectedImageBase64;
     const currentMime = selectedImageMime;
 
@@ -177,7 +177,7 @@ export default function ChatSection({
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue("");
+    setInputMsg("");
     setIsSending(true);
 
     if (onDeductPoint) {
@@ -223,6 +223,14 @@ export default function ChatSection({
         } catch (jsonErr) {
           console.warn("Could not parse backend JSON:", jsonErr);
         }
+      } else if (!response.ok && !contentType.includes("text/html")) {
+        try {
+          const resData = await response.json();
+          if (resData && resData.error) {
+            reply = "الخادم يقول: " + resData.error;
+            backendSuccess = true; // We successfully got an error message from backend
+          }
+        } catch (jsonErr) {}
       }
     } catch (err) {
       console.warn("Backend unavailable or timed out:", err);

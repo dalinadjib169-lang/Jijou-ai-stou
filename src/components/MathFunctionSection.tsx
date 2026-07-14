@@ -752,7 +752,7 @@ export default function MathFunctionSection({
 
     // 2. Direct browser-to-Google Gemini API request fallback (if backend fails)
     if (!backendSuccess) {
-      throw new Error("تعذر الاتصال بالخادم. يرجى التأكد من إعدادات Vercel أو المحاولة لاحقاً.");
+      throw new Error(backendErrorHint ? backendErrorHint : "تعذر الاتصال بالخادم. يرجى التأكد من إعدادات Vercel أو المحاولة لاحقاً.");
     }
     
     return reply;

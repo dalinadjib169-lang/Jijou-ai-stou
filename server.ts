@@ -268,11 +268,14 @@ async function getRotatedApiKeys(): Promise<string[]> {
     console.warn("[Key Rotation Firestore Error] Fallback env keys used:", error);
   }
 
-  // 3. Fallback to standard GEMINI_API_KEY if found and valid
-  const defaultKey = (process.env.GEMINI_API_KEY || "").trim();
-  if (defaultKey && defaultKey.startsWith("AIzaSy") && !defaultKey.includes(".") && !defaultKey.includes("...") && !defaultKey.includes("…") && !candidateKeys.includes(defaultKey)) {
-    candidateKeys.push(defaultKey);
-  }
+  // 3. Explicitly check common Vercel variable names just in case Object.entries is restricted
+  const commonNames = ["GEMINI_API_KEY", "VITE_GEMINI_API_KEY", "API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4", "GEMINI_API_KEY_5"];
+  commonNames.forEach(name => {
+    const val = (process.env[name] || "").trim();
+    if (val && val.startsWith("AIzaSy") && !val.includes(".") && !val.includes("...") && !val.includes("…") && !candidateKeys.includes(val)) {
+      candidateKeys.push(val);
+    }
+  });
 
   return Array.from(new Set(candidateKeys)).filter(Boolean);
 }
