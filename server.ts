@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
@@ -9,8 +8,10 @@ import crypto from "crypto";
 
 dotenv.config();
 
+import cors from "cors";
 const app = express();
 const PORT = 3000;
+app.use(cors());
 
 // Solid encryption constants
 const ALGORITHM = 'aes-256-cbc';
@@ -89,7 +90,8 @@ app.use((req, res, next) => {
 });
 
 // Load Firebase configuration
-import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
+import fs from "fs";
+import firebaseConfig from "./firebase-applet-config.json";
 
 const fbApp = initializeApp(firebaseConfig);
 const firestoreDb = firebaseConfig.firestoreDatabaseId
@@ -650,6 +652,7 @@ app.post("/api/admin/save-settings", async (req: any, res: any) => {
 async function bootstrap() {
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in DEVELOPMENT mode...");
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
