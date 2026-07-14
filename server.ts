@@ -91,12 +91,32 @@ app.use((req, res, next) => {
 
 // Load Firebase configuration
 import fs from "fs";
-import firebaseConfig from "./firebase-applet-config.json";
 
-const fbApp = initializeApp(firebaseConfig);
-const firestoreDb = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(fbApp, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(fbApp);
+let firebaseConfig = {};
+try {
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } else {
+    console.warn("firebase-applet-config.json not found in", process.cwd());
+  }
+} catch (e) {
+  console.warn("Could not load firebase config:", e);
+}
+
+let fbApp;
+let firestoreDb;
+
+try {
+  if (Object.keys(firebaseConfig).length > 0) {
+    fbApp = initializeApp(firebaseConfig);
+    firestoreDb = firebaseConfig.firestoreDatabaseId
+      ? getFirestore(fbApp, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(fbApp);
+  }
+} catch (e) {
+  console.warn("Failed to initialize Firebase:", e);
+}
 
 const LOCAL_SETTINGS_PATH = path.join(process.cwd(), "dali-settings-fallback.json");
 
@@ -127,6 +147,7 @@ let isFirestoreWorking = false;
 // Async self-invoking function to test if Firestore is working on startup
 async function checkFirestoreStatus() {
   try {
+    if (!firestoreDb) throw new Error("Firestore not initialized");
     const docRef = doc(firestoreDb, "settings", "dali");
     await getDoc(docRef);
     isFirestoreWorking = true;
@@ -158,6 +179,7 @@ async function getSettingsData(): Promise<any> {
   }
 
   try {
+    if (!firestoreDb) throw new Error("Firestore not initialized");
     const docRef = doc(firestoreDb, "settings", "dali");
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -195,6 +217,7 @@ async function saveSettingsData(payload: {
   }
 
   try {
+    if (!firestoreDb) throw new Error("Firestore not initialized");
     const docRef = doc(firestoreDb, "settings", "dali");
     await setDoc(docRef, payload);
     console.log("[Settings Cache] Settings saved successfully in Firestore.");

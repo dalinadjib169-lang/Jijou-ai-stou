@@ -197,7 +197,7 @@ export default function ChatSection({
 
     // 1. Try querying backend route first
     try {
-      const API_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
+      const API_URL = "";
       const response = await fetch(`${API_URL}/api/gemini/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
